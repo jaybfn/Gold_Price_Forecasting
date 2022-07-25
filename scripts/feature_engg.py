@@ -32,13 +32,13 @@ def feature_engineering(symbol, price_type):
     # SMA 60 days
     df_close_data['SMA_60'] = df_close_data[[price_type]].rolling(60).mean().shift(1)
 
-    # Create Moving Standard Deviation aka Volatility in the price.
+    # Create Moving Standard Deviation (MSD) aka Volatility in the price.
 
     # SMA 15 days
-    df_close_data['MSD_15'] = df_close_data[['returns']].rolling(15).std().shift(1)
+    df_close_data['MSD_10'] = df_close_data[['returns']].rolling(10).std().shift(1)
 
     # SMA 60 days
-    df_close_data['MSD_60'] = df_close_data[['returns']].rolling(60).std().shift(1)
+    df_close_data['MSD_30'] = df_close_data[['returns']].rolling(30).std().shift(1)
 
     # create RSI indicator
 
