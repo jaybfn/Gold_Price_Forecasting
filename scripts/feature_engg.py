@@ -44,7 +44,7 @@ def feature_engineering(symbol, price_type):
 
     RSI = ta.momentum.RSIIndicator(df_close_data[price_type], window=14, fillna = False)
     df_close_data['rsi_14'] = RSI.rsi().shift(1)
-    
+    df_close_data = df_close_data.dropna(axis = 0)
     return df_close_data
 
 
