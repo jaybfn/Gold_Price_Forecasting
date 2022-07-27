@@ -12,12 +12,14 @@ pd.set_option('display.width', 1500)      # max table width to display
 
 def get_mt5_data(currency_symbol = "XAUUSD", timeframe_val= mt5.TIMEFRAME_D1):
 
-    """ This function extracts stock or currency data from mt5 terminal:
+    """ This function extracts stock or currency data from mt5 terminal and saves it to a csv file:
     the function needs 2 inputs:
     1. currency_symbol: eg: "XAUUSD" "USDEUR"
     2. timeframe_val: resolution of the data, that could be daily price, 4H(4 hour) price, 1H etc 
                         eg:'mt5.TIMEFRAME_D1' for daily price
-                            mt5.TIMEFRAME_H4 for hour 4 price """
+                            mt5.TIMEFRAME_H4 for hour 4 price 
+                            
+    """
 
     # mt5 initialization
     if not mt5.initialize():
@@ -32,6 +34,7 @@ def get_mt5_data(currency_symbol = "XAUUSD", timeframe_val= mt5.TIMEFRAME_D1):
 
     # dumping data from mt5 to pyndas dataframe
     rates_frame = pd.DataFrame(rates)
+
     # convert time in seconds into the datetime format
     rates_frame['time']=pd.to_datetime(rates_frame['time'], unit='s')
     
@@ -39,12 +42,11 @@ def get_mt5_data(currency_symbol = "XAUUSD", timeframe_val= mt5.TIMEFRAME_D1):
     # display data
     print("\nDisplay dataframe with data")
     print(rates_frame)    
-    print(filename_)
+   
 
 if __name__=='__main__':
 
     currency_symbol = "XAUUSD"
     timeframe_val= mt5.TIMEFRAME_D1
-
 
     get_mt5_data(currency_symbol,timeframe_val)
