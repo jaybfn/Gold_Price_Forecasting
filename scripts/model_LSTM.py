@@ -73,26 +73,20 @@ class Normalize():
         self.data_fit_transformed = None
         self.data_inverse_transformed = None
 
-    def fit_transform(self, data):
+    def fit_transform(self, data_train, data_val, data_test):
 
         # initialize StandartScaler()
         scaler = StandardScaler()
-        # fit the method on the dataset
-        scaler = scaler.fit(data)
-        # transform the dataset
-        data_fit_transformed = scaler.transform(data)
-
-        return data_fit_transformed
-
-    def transform(self,data):
-    
-        # initialize StandardScaler()
-        scaler = StandardScaler()
-
-        # transform the dataset
-        data_fit_transformed = scaler.transform(data)
-
-        return data_fit_transformed
+        # define transformer
+        transformer = [('standard_scaler', StandardScaler(),['open','high','low','close','tick_volume'])]
+        # define column transformer
+        column_transformer = ColumnTransformer(transformers = transformer)
+        # fit and transform training data
+        data_fit_transformed = column_transformer.fit_transform(data_train)
+        # transform val and test data
+        val_transformed = column_transformer.transform(data_val)
+        test_transformed = column_transformer.transform(data_test)
+        return data_fit_transformed, val_transformed, test_transformed
 
     def inverse_transform(self, data):
 
@@ -102,6 +96,7 @@ class Normalize():
         data_inverse_transformed = scaler.inverse_transform(data)
         
         return data_inverse_transformed
+
 
 # Data transformation (changing data shape to model requirement)
 
@@ -214,32 +209,26 @@ if __name__ == '__main__':
 
     X_train, X_val , X_test = train_test_split(df_data, train_split=0.9)
 
-    # normalize_train datset
+    # normalize train, val and test dataset
     scaler_init = Normalize()
-    scaled_data = scaler_init.fit_transform(X_train)
+    data_fit_transformed, val_transformed, test_transformed = scaler_init.fit_transform(X_train, X_val, X_test)
     print('\n')
-    print('Displaying top 5 rows of scaled dataset:')
+    print('Displaying top 5 rows of all the scaled dataset:')
     print('\n')
-    print(scaled_data[0:5])
+    print(data_fit_transformed[0:5], val_transformed[0:5], test_transformed[0:5])
 
-    # transform val and test dataset
-    # validation dataset
-    scaled_val_data = scaler_init.transform(X_val)
-
-    # test dataset
-    scaled_test_data = scaler_init.transform(X_test)
-
+    
     # changing shape of the data to match the model requirement!
 
-    X_data, y_data = data_transformation(scaled_data, lags = 5)
+    X_data, y_data = data_transformation(data_fit_transformed, lags = 5)
     print('\n')
     print('Displaying the shape of the dataset required by the model:')
     print('\n')
     print(f' Input shape X:',X_data.shape, f'Input shape y:',y_data.shape)
     print('\n')
 
-    X_val_data, y_val_data = data_transformation(scaled_val_data, lags = 5)
-    X_test_data, y_test_data = data_transformation(scaled_test_data, lags= 5)
+    X_val_data, y_val_data = data_transformation(val_transformed, lags = 5)
+    X_test_data, y_test_data = data_transformation(test_transformed, lags= 5)
 
     # input data
     train_data_X = X_data 
@@ -275,7 +264,17 @@ if __name__ == '__main__':
                         callbacks=[cb],
                         shuffle= False)
 
+    # Model evaluation
+
+    # training dataset
+    train_loss, RMSE, MAE, MAPE = model.evaluate(train_data_X,train_data_y)
+    print('\n','Evaluation of Training dataset:','\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
+    
+    # validation dataset
+    val_loss, val_RMSE, val_MAE, val_MAPE = model.evaluate(X_val_data, y_val_data)
+    print('\n','Evaluation of Validation dataset:','\n','train_loss:',round(val_loss,3),'\n','val_RMSE:',round(val_RMSE,3),'\n', 'val_MAE:',round(val_MAE,3),'\n','MAPE:',round(MAPE,3))
     # path to save model
+    
     model.save(path_model+'/'+model_name)   
 
 
