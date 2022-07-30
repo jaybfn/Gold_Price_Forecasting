@@ -13,6 +13,7 @@ from tensorflow.keras.layers import LSTM
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
 from sklearn.preprocessing import StandardScaler
+from sklearn.compose import ColumnTransformer
 import seaborn as sns
 import matplotlib.pyplot as plt
 plt.rcParams['figure.facecolor'] = 'white'
@@ -49,7 +50,7 @@ class DataFormatting():
 
 # split the dataset in tain and test!
 
-def train_test_split(data, train_split=0.9):
+def train_test_split(data, train_split=0.7):
     
     """ This function will split the dataframe into training and testing set.
     Inputs: data: Pandas DatFrame
@@ -62,41 +63,6 @@ def train_test_split(data, train_split=0.9):
     X_test = data.iloc[split_test:,:]
 
     return X_train, X_val, X_test
-
-# Normalize the dataset using standard scaler
-
-class Normalize():
-    
-    """ class Normalize uses standard scaler method to normalize the dataset"""
-    def __init__(self):
-
-        self.data_fit_transformed = None
-        self.data_inverse_transformed = None
-
-    def fit_transform(self, data_train, data_val, data_test):
-
-        # initialize StandartScaler()
-        scaler = StandardScaler()
-        # define transformer
-        transformer = [('standard_scaler', StandardScaler(),['open','high','low','close','tick_volume'])]
-        # define column transformer
-        column_transformer = ColumnTransformer(transformers = transformer)
-        # fit and transform training data
-        data_fit_transformed = column_transformer.fit_transform(data_train)
-        # transform val and test data
-        val_transformed = column_transformer.transform(data_val)
-        test_transformed = column_transformer.transform(data_test)
-        return data_fit_transformed, val_transformed, test_transformed
-
-    def inverse_transform(self, data):
-
-        # initialize StandartScaler()
-        scaler = StandardScaler()
-        # inverse transform the dataset
-        data_inverse_transformed = scaler.inverse_transform(data)
-        
-        return data_inverse_transformed
-
 
 # Data transformation (changing data shape to model requirement)
 
@@ -155,6 +121,28 @@ class LSTM_model():
         model.add(Dense(self.train_data_y.shape[1]))
         return model
 
+def metricplot(df, xlab, ylab_1,ylab_2, path):
+    
+    """
+    This function plots metric curves and saves it
+    to respective folder
+    inputs: df : pandas dataframe 
+            xlab: x-axis
+            ylab_1 : yaxis_1
+            ylab_2 : yaxis_2
+            path: full path for saving the plot
+            """
+    plt.figure()
+    sns.set_theme(style="darkgrid")
+    sns.lineplot(x = df[xlab], y = df[ylab_1])
+    sns.lineplot(x = df[xlab], y = df[ylab_2])
+    plt.xlabel('Epochs',fontsize = 12)
+    plt.ylabel(ylab_1,fontsize = 12)
+    plt.xticks(fontsize = 12)
+    plt.yticks(fontsize = 12)
+    plt.legend([ylab_1,ylab_2], prop={"size":12})
+    plt.savefig(path+'/'+ ylab_1)
+    #plt.show()
 
 if __name__ == '__main__':
     
@@ -163,10 +151,12 @@ if __name__ == '__main__':
     keras.backend.clear_session()
 
     # model hyperparameters!
+    lag = 5
     n_hidden_layers = 3
+    batch_size = 128
     units = 128
-    dropout = 0.2
-    epochs = 1
+    dropout = 0.3
+    epochs = 1000
 
     # creating main folder
     today = datetime.now()
@@ -175,7 +165,7 @@ if __name__ == '__main__':
     create_dir(path)
  
     # creating directory to save model and its output
-    folder = 'model_lstm'+ str(units)
+    folder = 'model_lstm'+ str(units) + '_' + str(n_hidden_layers)
     path_main = path + '/'+ folder
     create_dir(path_main)
 
@@ -207,11 +197,16 @@ if __name__ == '__main__':
 
     # create train test split
 
-    X_train, X_val , X_test = train_test_split(df_data, train_split=0.9)
+    X_train, X_val , X_test = train_test_split(df_data, train_split=0.7)
 
     # normalize train, val and test dataset
-    scaler_init = Normalize()
-    data_fit_transformed, val_transformed, test_transformed = scaler_init.fit_transform(X_train, X_val, X_test)
+
+    # initialize StandartScaler()
+    scaler = StandardScaler()
+    data_fit_transformed = scaler.fit_transform(X_train)
+    val_transformed = scaler.fit_transform(X_val)
+    test_transformed = scaler.fit_transform(X_test)
+    
     print('\n')
     print('Displaying top 5 rows of all the scaled dataset:')
     print('\n')
@@ -220,15 +215,15 @@ if __name__ == '__main__':
     
     # changing shape of the data to match the model requirement!
 
-    X_data, y_data = data_transformation(data_fit_transformed, lags = 5)
+    X_data, y_data = data_transformation(data_fit_transformed, lags = lag)
     print('\n')
     print('Displaying the shape of the dataset required by the model:')
     print('\n')
     print(f' Input shape X:',X_data.shape, f'Input shape y:',y_data.shape)
     print('\n')
 
-    X_val_data, y_val_data = data_transformation(val_transformed, lags = 5)
-    X_test_data, y_test_data = data_transformation(test_transformed, lags= 5)
+    X_val_data, y_val_data = data_transformation(val_transformed, lags = lag)
+    X_test_data, y_test_data = data_transformation(test_transformed, lags= lag)
 
     # input data
     train_data_X = X_data 
@@ -253,12 +248,12 @@ if __name__ == '__main__':
     cb = [
         tf.keras.callbacks.ModelCheckpoint(path_checkpoint),
         tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv'),
-        tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=False)]
+        tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=1001, restore_best_weights=False)]
 
     # model fitting protocol
     history = model.fit(train_data_X,train_data_y, 
                         epochs = epochs, 
-                        batch_size = 8, 
+                        batch_size = batch_size, 
                         validation_data=(X_val_data, y_val_data), 
                         verbose = 1,
                         callbacks=[cb],
@@ -268,14 +263,33 @@ if __name__ == '__main__':
 
     # training dataset
     train_loss, RMSE, MAE, MAPE = model.evaluate(train_data_X,train_data_y)
-    print('\n','Evaluation of Training dataset:','\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
+    print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
     
     # validation dataset
     val_loss, val_RMSE, val_MAE, val_MAPE = model.evaluate(X_val_data, y_val_data)
-    print('\n','Evaluation of Validation dataset:','\n','train_loss:',round(val_loss,3),'\n','val_RMSE:',round(val_RMSE,3),'\n', 'val_MAE:',round(val_MAE,3),'\n','MAPE:',round(MAPE,3))
+    print('\n','Evaluation of Validation dataset:','\n''\n','val_loss:',round(val_loss,3),'\n','val_RMSE:',round(val_RMSE,3),'\n', 'val_MAE:',round(val_MAE,3),'\n','MAPE:',round(MAPE,3))
     # path to save model
-    
+
     model.save(path_model+'/'+model_name)   
 
+    path_metrics+'/'+'data.csv'
+    df = pd.read_csv(path_metrics+'/'+'data.csv')
 
+    metricplot(df, 'epoch', 'loss','val_loss', path_metrics)
+    metricplot(df, 'epoch', 'mean_absolute_error','val_mean_absolute_error', path_metrics)
+    metricplot(df, 'epoch', 'mean_absolute_percentage_error','val_mean_absolute_percentage_error', path_metrics)
+    metricplot(df, 'epoch', 'root_mean_squared_error','val_root_mean_squared_error', path_metrics)
 
+    # prediction on the test set
+    
+    y_pred_close = model.predict(X_test_data)
+    y_pred_close_copies = np.repeat(y_pred_close, X_train.shape[1], axis = -1)
+    y_pred_scaled = scaler.inverse_transform(y_pred_close_copies)[:,0]
+
+    y_test_true = np.repeat(y_test_data, X_train.shape[1], axis = -1)
+    y_test_scaled = scaler.inverse_transform(y_test_true)[:,0]
+    # lets compare the predicted output and the original values using RMSE as a metric
+    
+    rmse = tf.keras.metrics.RootMeanSquaredError()
+    RMSE_test = rmse(y_test_scaled, y_pred_scaled)
+    print(RMSE_test)
