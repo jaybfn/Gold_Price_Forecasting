@@ -56,10 +56,12 @@ def train_test_split(data, train_split=0.9):
             train_split: default is set to 0.9. Its a ratio to split the trining and testing datset.
     """
     split = int(train_split*len(data)) # for training
+    split_test = int(0.90*len(data))
     X_train = data.iloc[:split,:]
-    X_test = data.iloc[split:,:]
+    X_val = data.iloc[split:split_test,:]
+    X_test = data.iloc[split_test:,:]
 
-    return X_train, X_test
+    return X_train, X_val, X_test
 
 # Normalize the dataset using standard scaler
 
@@ -77,6 +79,16 @@ class Normalize():
         scaler = StandardScaler()
         # fit the method on the dataset
         scaler = scaler.fit(data)
+        # transform the dataset
+        data_fit_transformed = scaler.transform(data)
+
+        return data_fit_transformed
+
+    def transform(self,data):
+    
+        # initialize StandardScaler()
+        scaler = StandardScaler()
+
         # transform the dataset
         data_fit_transformed = scaler.transform(data)
 
@@ -200,15 +212,22 @@ if __name__ == '__main__':
 
     # create train test split
 
-    X_train, X_test = train_test_split(df_data, train_split=0.9)
+    X_train, X_val , X_test = train_test_split(df_data, train_split=0.9)
 
-    # normalize
+    # normalize_train datset
     scaler_init = Normalize()
     scaled_data = scaler_init.fit_transform(X_train)
     print('\n')
     print('Displaying top 5 rows of scaled dataset:')
     print('\n')
     print(scaled_data[0:5])
+
+    # transform val and test dataset
+    # validation dataset
+    scaled_val_data = scaler_init.transform(X_val)
+
+    # test dataset
+    scaled_test_data = scaler_init.transform(X_test)
 
     # changing shape of the data to match the model requirement!
 
@@ -218,6 +237,9 @@ if __name__ == '__main__':
     print('\n')
     print(f' Input shape X:',X_data.shape, f'Input shape y:',y_data.shape)
     print('\n')
+
+    X_val_data, y_val_data = data_transformation(scaled_val_data, lags = 5)
+    X_test_data, y_test_data = data_transformation(scaled_test_data, lags= 5)
 
     # input data
     train_data_X = X_data 
@@ -248,7 +270,7 @@ if __name__ == '__main__':
     history = model.fit(train_data_X,train_data_y, 
                         epochs = epochs, 
                         batch_size = 8, 
-                        validation_split=0.2, 
+                        validation_data=(X_val_data, y_val_data), 
                         verbose = 1,
                         callbacks=[cb],
                         shuffle= False)
