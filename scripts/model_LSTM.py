@@ -151,12 +151,12 @@ if __name__ == '__main__':
     keras.backend.clear_session()
 
     # model hyperparameters!
-    lag = 5
-    n_hidden_layers = 3
+    lag = 14
+    n_hidden_layers = 2
     batch_size = 128
-    units = 128
+    units = 256
     dropout = 0.3
-    epochs = 1000
+    epochs = 2000
 
     # creating main folder
     today = datetime.now()
@@ -189,7 +189,7 @@ if __name__ == '__main__':
 
     # initializing DataFormatting class
     data_init = DataFormatting()
-    df_data, _ = DataFormatting.dataset(data)
+    df_data, df_datetime = DataFormatting.dataset(data)
     print('\n')
     print('Displaying top 5 rows of the dataset:')
     print('\n')
@@ -239,7 +239,7 @@ if __name__ == '__main__':
     metrics = [tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanAbsolutePercentageError()]
 
     # model compiler
-    model.compile(optimizer=Adam(learning_rate = 0.0001), loss='mse', metrics = metrics)
+    model.compile(optimizer=Adam(learning_rate = 0.00001), loss='mse', metrics = metrics)
 
     # setting the model file name
     model_name = 'lstm_'+ str(units)+'.h5'
@@ -293,3 +293,13 @@ if __name__ == '__main__':
     rmse = tf.keras.metrics.RootMeanSquaredError()
     RMSE_test = rmse(y_test_scaled, y_pred_scaled)
     print(RMSE_test)
+
+    future_days = 5
+
+    forecast_date = pd.date_range(list(df_datetime.time)[-1], periods = future_days, freq = '1d').tolist()
+    forecast = model.predict(X_data[-future_days:])
+    #print(forecast)
+    forecast_copies = np.repeat(forecast, X_data.shape[1], axis = -1 )
+    #print(forecast_copies)
+    y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
+    print(y_pred_fut)
