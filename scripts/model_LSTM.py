@@ -12,10 +12,10 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
-from sklearn.preprocessing import StandardScaler
-from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import MinMaxScaler
 import seaborn as sns
 import matplotlib.pyplot as plt
+from keras.models import load_model
 plt.rcParams['figure.facecolor'] = 'white'
 warnings.simplefilter('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -40,10 +40,10 @@ class DataFormatting():
     def dataset(df):
 
         # converting time colum from object type to datetime format
-        df['time'] = pd.to_datetime(df['time'])
+        df['date'] = pd.to_datetime(df['date'])
         # splitting the dataframe in to X and y 
-        df_data = df[['open','high','low','close','tick_volume']]
-        df_datetime =df[['time']]
+        df_data = df[['open','high','low','close','rates']]
+        df_datetime =df[['date']]
 
         return df_data, df_datetime
 
@@ -151,12 +151,12 @@ if __name__ == '__main__':
     keras.backend.clear_session()
 
     # model hyperparameters!
-    lag = 14
+    lag = 5
     n_hidden_layers = 2
     batch_size = 128
     units = 256
     dropout = 0.3
-    epochs = 2000
+    epochs = 100
 
     # creating main folder
     today = datetime.now()
@@ -202,15 +202,16 @@ if __name__ == '__main__':
     # normalize train, val and test dataset
 
     # initialize StandartScaler()
-    scaler = StandardScaler()
-    data_fit_transformed = scaler.fit_transform(X_train)
-    val_transformed = scaler.fit_transform(X_val)
-    test_transformed = scaler.fit_transform(X_test)
+    scaler = MinMaxScaler()
+    scaler = scaler.fit(X_train)
+    data_fit_transformed = scaler.transform(X_train)
+    val_transformed = scaler.transform(X_val)
+    test_transformed = scaler.transform(X_test)
     
     print('\n')
     print('Displaying top 5 rows of all the scaled dataset:')
     print('\n')
-    print(data_fit_transformed[0:5], val_transformed[0:5], test_transformed[0:5])
+    print('The train dateset:','\n''\n',data_fit_transformed[0:5],'\n''\n', 'The validation dataset:','\n''\n',val_transformed[0:5],'\n''\n','The test dataset:','\n''\n',test_transformed[0:5])
 
     
     # changing shape of the data to match the model requirement!
@@ -239,7 +240,7 @@ if __name__ == '__main__':
     metrics = [tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanAbsolutePercentageError()]
 
     # model compiler
-    model.compile(optimizer=Adam(learning_rate = 0.00001), loss='mse', metrics = metrics)
+    model.compile(optimizer=Adam(learning_rate = 0.0001), loss='mse', metrics = metrics)
 
     # setting the model file name
     model_name = 'lstm_'+ str(units)+'.h5'
@@ -280,26 +281,35 @@ if __name__ == '__main__':
     metricplot(df, 'epoch', 'mean_absolute_percentage_error','val_mean_absolute_percentage_error', path_metrics)
     metricplot(df, 'epoch', 'root_mean_squared_error','val_root_mean_squared_error', path_metrics)
 
+
+
+    model_name = 'lstm_'+ str(units)+'.h5'
+    model_eval = load_model(path_model+'/'+model_name, compile=False)
+
+
     # prediction on the test set
     
-    y_pred_close = model.predict(X_test_data)
+    y_pred_close = model_eval.predict(X_test_data)
     y_pred_close_copies = np.repeat(y_pred_close, X_train.shape[1], axis = -1)
     y_pred_scaled = scaler.inverse_transform(y_pred_close_copies)[:,0]
 
     y_test_true = np.repeat(y_test_data, X_train.shape[1], axis = -1)
     y_test_scaled = scaler.inverse_transform(y_test_true)[:,0]
+    
     # lets compare the predicted output and the original values using RMSE as a metric
     
     rmse = tf.keras.metrics.RootMeanSquaredError()
     RMSE_test = rmse(y_test_scaled, y_pred_scaled)
-    print(RMSE_test)
+    print('\n')
+    print('The RMSE on the test data set is:',RMSE_test)
+    print('\n')
 
-    future_days = 5
+    future_days = 10
 
-    forecast_date = pd.date_range(list(df_datetime.time)[-1], periods = future_days, freq = '1d').tolist()
-    forecast = model.predict(X_data[-future_days:])
+    forecast_date = pd.date_range(list(df_datetime['date'])[-1], periods = future_days, freq = '1d').tolist()
+    forecast = model_eval.predict(X_data[-future_days:])
     #print(forecast)
-    forecast_copies = np.repeat(forecast, X_data.shape[1], axis = -1 )
+    forecast_copies = np.repeat(forecast, X_data.shape[2], axis = -1 )
     #print(forecast_copies)
     y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
-    print(y_pred_fut)
+    print('The forecast for the future 10 days is:','\n',y_pred_fut)

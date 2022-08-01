@@ -37,7 +37,7 @@ def get_mt5_data(currency_symbol = "XAUUSD", timeframe_val= mt5.TIMEFRAME_D1):
 
     # convert time in seconds into the datetime format
     rates_frame['time']=pd.to_datetime(rates_frame['time'], unit='s')
-    
+    rates_frame.rename(columns = {'time':'date'}, inplace = True)
     rates_frame.to_csv('../data/gold_mt5.csv')
     # display data
     print("\nDisplay dataframe with data")
