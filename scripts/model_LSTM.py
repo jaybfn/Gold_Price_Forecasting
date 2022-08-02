@@ -13,6 +13,7 @@ from tensorflow.keras.layers import LSTM
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
 from sklearn.preprocessing import MinMaxScaler
+from keras.regularizers import L1L2
 import seaborn as sns
 import matplotlib.pyplot as plt
 from keras.models import load_model
@@ -42,7 +43,7 @@ class DataFormatting():
         # converting time colum from object type to datetime format
         df['date'] = pd.to_datetime(df['date'])
         # splitting the dataframe in to X and y 
-        df_data = df[['open','high','low','close','rates']]
+        df_data = df[['open','high','low','close']]
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -94,7 +95,7 @@ def data_transformation(data, lags = 5):
 class LSTM_model():
     
 
-    def __init__(self,n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs):
+    def __init__(self,n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg):
 
         self.n_hidden_layers = n_hidden_layers
         self.units = units
@@ -102,12 +103,13 @@ class LSTM_model():
         self.train_data_X = train_data_X
         self.train_data_y = train_data_y
         self.epochs = epochs
+        self.reg = reg
 
     def build_model(self):
         
         model = Sequential()
         # first lstm layer
-        model.add(LSTM(self.units, activation='relu', input_shape=(self.train_data_X.shape[1], self.train_data_X.shape[2]), return_sequences=True))
+        model.add(LSTM(self.units, activation='relu', input_shape=(self.train_data_X.shape[1], self.train_data_X.shape[2]), kernel_regularizer=self.reg, return_sequences=True))
         # building hidden layers
         for i in range(1, self.n_hidden_layers):
             # for the last layer as the return sequence is False
@@ -151,12 +153,13 @@ if __name__ == '__main__':
     keras.backend.clear_session()
 
     # model hyperparameters!
-    lag = 5
+    lag = 3
     n_hidden_layers = 2
     batch_size = 128
-    units = 256
+    units = 128
     dropout = 0.3
-    epochs = 100
+    epochs = 300
+    reg = L1L2(l1=0.00, l2=0.00)
 
     # creating main folder
     today = datetime.now()
@@ -231,7 +234,7 @@ if __name__ == '__main__':
     train_data_y = y_data
 
     # initializing model
-    model_init = LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs)
+    model_init = LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
 
     # calling the model
     model = model_init.build_model()
