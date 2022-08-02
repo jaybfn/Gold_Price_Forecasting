@@ -5,18 +5,20 @@ import warnings
 from datetime import datetime 
 import pandas as pd
 import numpy as np
+from math import sqrt
 from numpy.random import seed
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import LSTM, Bidirectional
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from keras.regularizers import L1L2
 import seaborn as sns
 import matplotlib.pyplot as plt
 from keras.models import load_model
+from sklearn.metrics import mean_squared_error
 plt.rcParams['figure.facecolor'] = 'white'
 warnings.simplefilter('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -43,7 +45,7 @@ class DataFormatting():
         # converting time colum from object type to datetime format
         df['date'] = pd.to_datetime(df['date'])
         # splitting the dataframe in to X and y 
-        df_data = df[['open','high','low','close']]
+        df_data = df[['open','close']] #,'high','low'
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -81,7 +83,7 @@ def data_transformation(data, lags = 5):
     
     for i in range(lags, len(data)):
         X_data.append(data[i-lags: i, 0: data.shape[1]])
-        y_data.append(data[i,3:4]) # extracts close price with specific lag as price to be predicted.
+        y_data.append(data[i,1:2]) # extracts close price with specific lag as price to be predicted.
 
     # convert the list to numpy array
 
@@ -109,14 +111,51 @@ class LSTM_model():
         
         model = Sequential()
         # first lstm layer
-        model.add(LSTM(self.units, activation='relu', input_shape=(self.train_data_X.shape[1], self.train_data_X.shape[2]), kernel_regularizer=self.reg, return_sequences=True))
+        model.add(LSTM(self.units, activation='tanh', input_shape=(self.train_data_X.shape[1], self.train_data_X.shape[2]), kernel_regularizer=self.reg, return_sequences=True))
         # building hidden layers
         for i in range(1, self.n_hidden_layers):
             # for the last layer as the return sequence is False
             if i == self.n_hidden_layers -1:
-                model.add(LSTM(int(self.units/(2**i)),  activation='relu', return_sequences=False))
+                model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=False))
             else:
-                model.add(LSTM(int(self.units/(2**i)),  activation='relu', return_sequences=True))
+                model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=True))
+        # adding droupout layer
+        model.add(Dropout(self.dropout))
+        # final layer
+        model.add(Dense(self.train_data_y.shape[1]))
+        return model
+
+class Bi_LSTM_model():
+    
+
+    def __init__(self,n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg):
+
+        self.n_hidden_layers = n_hidden_layers
+        self.units = units
+        self.dropout = dropout
+        self.train_data_X = train_data_X
+        self.train_data_y = train_data_y
+        self.epochs = epochs
+        self.reg = reg
+
+    def build_model(self):
+        
+        model = Sequential()
+        # first lstm layer
+        model.add(Bidirectional(LSTM(self.units, activation='tanh', input_shape=(self.train_data_X.shape[1], self.train_data_X.shape[2]), kernel_regularizer=self.reg, return_sequences=True)))
+        # building hidden layers
+        
+        if self.n_hidden_layers !=1:
+
+            for i in range(1, self.n_hidden_layers):
+                # for the last layer as the return sequence is False
+                if i == self.n_hidden_layers -1:
+                    model.add(Bidirectional(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=False)))
+                else:
+                    model.add(Bidirectional(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=True)))
+
+        else:
+            model.add(Bidirectional(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=False)))
         # adding droupout layer
         model.add(Dropout(self.dropout))
         # final layer
@@ -153,13 +192,14 @@ if __name__ == '__main__':
     keras.backend.clear_session()
 
     # model hyperparameters!
-    lag = 3
+    lag = 5
     n_hidden_layers = 2
-    batch_size = 128
+    batch_size = 256 #256
     units = 128
-    dropout = 0.3
-    epochs = 300
-    reg = L1L2(l1=0.00, l2=0.00)
+    dropout = 0.0
+    epochs = 50
+    learning_rate = 0.001
+    reg = L1L2(l1=0.02, l2=0.03)
 
     # creating main folder
     today = datetime.now()
@@ -168,7 +208,7 @@ if __name__ == '__main__':
     create_dir(path)
  
     # creating directory to save model and its output
-    folder = 'model_lstm'+ str(units) + '_' + str(n_hidden_layers)
+    folder = 'model_Bi_lstm'+ str(units) + '_' + str(n_hidden_layers)
     path_main = path + '/'+ folder
     create_dir(path_main)
 
@@ -205,7 +245,7 @@ if __name__ == '__main__':
     # normalize train, val and test dataset
 
     # initialize StandartScaler()
-    scaler = MinMaxScaler()
+    scaler = StandardScaler()
     scaler = scaler.fit(X_train)
     data_fit_transformed = scaler.transform(X_train)
     val_transformed = scaler.transform(X_val)
@@ -234,7 +274,7 @@ if __name__ == '__main__':
     train_data_y = y_data
 
     # initializing model
-    model_init = LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
+    model_init = Bi_LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
 
     # calling the model
     model = model_init.build_model()
@@ -243,11 +283,11 @@ if __name__ == '__main__':
     metrics = [tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanAbsolutePercentageError()]
 
     # model compiler
-    model.compile(optimizer=Adam(learning_rate = 0.0001), loss='mse', metrics = metrics)
+    model.compile(optimizer=Adam(learning_rate = learning_rate), loss='mse', metrics = metrics)
 
     # setting the model file name
-    model_name = 'lstm_'+ str(units)+'.h5'
-    
+    model_name = 'Bilstm_'+ str(units)+'.h5'
+
     # setting the callback function
     cb = [
         tf.keras.callbacks.ModelCheckpoint(path_checkpoint),
@@ -268,7 +308,7 @@ if __name__ == '__main__':
     # training dataset
     train_loss, RMSE, MAE, MAPE = model.evaluate(train_data_X,train_data_y)
     print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
-    
+
     # validation dataset
     val_loss, val_RMSE, val_MAE, val_MAPE = model.evaluate(X_val_data, y_val_data)
     print('\n','Evaluation of Validation dataset:','\n''\n','val_loss:',round(val_loss,3),'\n','val_RMSE:',round(val_RMSE,3),'\n', 'val_MAE:',round(val_MAE,3),'\n','MAPE:',round(MAPE,3))
@@ -286,7 +326,7 @@ if __name__ == '__main__':
 
 
 
-    model_name = 'lstm_'+ str(units)+'.h5'
+    model_name = 'Bilstm_'+ str(units)+'.h5'
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
 
@@ -300,9 +340,9 @@ if __name__ == '__main__':
     y_test_scaled = scaler.inverse_transform(y_test_true)[:,0]
     
     # lets compare the predicted output and the original values using RMSE as a metric
-    
-    rmse = tf.keras.metrics.RootMeanSquaredError()
-    RMSE_test = rmse(y_test_scaled, y_pred_scaled)
+    RMSE_test = sqrt(mean_squared_error(y_test_scaled, y_pred_scaled))
+    #rmse = tf.keras.metrics.RootMeanSquaredError()
+    #RMSE_test = rmse(y_test_scaled, y_pred_scaled)
     print('\n')
     print('The RMSE on the test data set is:',RMSE_test)
     print('\n')
@@ -316,3 +356,5 @@ if __name__ == '__main__':
     #print(forecast_copies)
     y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
     print('The forecast for the future 10 days is:','\n',y_pred_fut)
+
+
