@@ -31,7 +31,24 @@ def create_dir(path):
             os.makedirs(path, exist_ok = False)
             print("New directory is created")
 
-#load and format data
+# load and format data
+
+# class DataFormatting():
+      
+#     def __init__(self):
+       
+#         self.df_data = None
+#         self.df_datetime = None
+
+#     def dataset(df):
+
+#         # converting time colum from object type to datetime format
+#         df['date'] = pd.to_datetime(df['date'])
+#         # splitting the dataframe in to X and y 
+#         df_data = df[['open','close']] #,'high','low'
+#         df_datetime =df[['date']]
+
+#         return df_data, df_datetime
 
 class DataFormatting():
       
@@ -45,13 +62,13 @@ class DataFormatting():
         # converting time colum from object type to datetime format
         df['date'] = pd.to_datetime(df['date'])
         # splitting the dataframe in to X and y 
-        df_data = df[['open','close']] #,'high','low'
+        df.dropna(inplace = True)
+
+        df_data = df[['Gold Price','CPI','FedFunds','crude oil','exchange_rate_index','SP500']] #,'high','low'
         df_datetime =df[['date']]
 
         return df_data, df_datetime
 
-
-# split the dataset in tain and test!
 
 def train_test_split(data, train_split=0.7):
     
@@ -64,8 +81,10 @@ def train_test_split(data, train_split=0.7):
     X_train = data.iloc[:split,:]
     X_val = data.iloc[split:split_test,:]
     X_test = data.iloc[split_test:,:]
-
-    return X_train, X_val, X_test
+    y_train = data.iloc[:split,:1]
+    y_val = data.iloc[split:split_test,:1]
+    y_test = data.iloc[split_test:,:1]
+    return X_train, X_val, X_test, y_train, y_val, y_test
 
 
 # Data transformation (changing data shape to model requirement)
@@ -83,8 +102,8 @@ def data_transformation(data, lags = 5):
     y_data = []
     
     for i in range(lags, len(data)):
-        X_data.append(data[i-lags: i, 0: data.shape[1]])
-        y_data.append(data[i,1:2]) # extracts close price with specific lag as price to be predicted.
+        X_data.append(data[i-lags: i,0: data.shape[1]])
+        y_data.append(data[i,0:1]) # extracts close price with specific lag as price to be predicted.
 
     # convert the list to numpy array
 
@@ -195,10 +214,10 @@ if __name__ == '__main__':
     # model hyperparameters!
     lag = 1
     n_hidden_layers = 2
-    batch_size = 256 #256
+    batch_size = 128 #256
     units = 128
-    dropout = 0.0
-    epochs = 50
+    dropout = 0.3
+    epochs = 1000
     learning_rate = 0.001
     reg = L1L2(l1=0.03, l2=0.0)
 
@@ -209,7 +228,7 @@ if __name__ == '__main__':
     create_dir(path)
  
     # creating directory to save model and its output
-    folder = 'model_lstm'+ str(units) + '_' + str(n_hidden_layers)
+    folder = 'model_lstm_monthly_data'+ str(units) + '_' + str(n_hidden_layers)
     path_main = path + '/'+ folder
     create_dir(path_main)
 
@@ -229,8 +248,8 @@ if __name__ == '__main__':
     create_dir(path_checkpoint)
 
     # loading the dataset!
-    data = pd.read_csv('../data/gold_mt5.csv',index_col=[0]) 
-
+    data = pd.read_csv('../data/Gold_Data_pub.csv') 
+    #print(data.head())
     # initializing DataFormatting class
     data_init = DataFormatting()
     df_data, df_datetime = DataFormatting.dataset(data)
@@ -241,8 +260,8 @@ if __name__ == '__main__':
 
     # create train test split
 
-    X_train, X_val , X_test = train_test_split(df_data, train_split=0.7)
-
+    X_train, X_val , X_test , y_train, y_val, y_test= train_test_split(df_data, train_split=0.7)
+    print(X_train.head())
     # normalize train, val and test dataset
 
     # initialize StandartScaler()
@@ -330,6 +349,7 @@ if __name__ == '__main__':
     model_name = 'lstm_'+ str(units)+'.h5'
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
+
     # prediction on the test set
     
     y_pred_close = model_eval.predict(X_test_data)
@@ -340,23 +360,27 @@ if __name__ == '__main__':
     y_test_scaled = scaler.inverse_transform(y_test_true)[:,0]
     print(y_test_scaled[:10])
     print(y_pred_scaled[:10])
+
     # lets compare the predicted output and the original values using RMSE as a metric
+
+    
     RMSE_test = sqrt(mean_squared_error(y_test_scaled, y_pred_scaled))
-    #rmse = tf.keras.metrics.RootMeanSquaredError()
-    #RMSE_test = rmse(y_test_scaled, y_pred_scaled)
+    rmse = tf.keras.metrics.RootMeanSquaredError()
+    RMSE_test = rmse(y_test_scaled, y_pred_scaled)
     print('\n')
     print('The RMSE on the test data set is:',RMSE_test)
     print('\n')
 
     future_days = 10
     
-    forecast_date = pd.date_range(list(df_datetime['date'])[-1], periods = future_days, freq = '1D').tolist()
-
+    forecast_date = pd.date_range(list(df_datetime['date'])[-1], periods = future_days, freq = 'M').tolist()
+    #print(forecast_date)
     forecast = model_eval.predict(X_data[-future_days:])
     #print(forecast)
     forecast_copies = np.repeat(forecast, X_data.shape[2], axis = -1 )
-    #print(forecast_copies)
+    print(forecast_copies)
     y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
     print('The forecast for the future 10 days is:','\n',y_pred_fut)
+
 
 
