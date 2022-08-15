@@ -48,7 +48,7 @@ class DataFormatting():
         df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
         df = df.dropna()
         # splitting the dataframe in to X and y 
-        df_data = df[['open','close','SMA_10']] #,'high','low'
+        df_data = df[['open','close','high','low','SMA_10']] #,
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -132,11 +132,11 @@ class LSTM_model():
 
         # adding dropout layer
         model.add(Dropout(self.dropout))
-
-        # adding another dense layer
-        model.add(Dense(100, activation ='tanh'))
         # final layer
         model.add(Dense(self.train_data_y.shape[1]))
+
+        
+
         return model
 
 class Bi_LSTM_model():
@@ -170,10 +170,12 @@ class Bi_LSTM_model():
 
         else:
             model.add(Bidirectional(LSTM(int(self.units/2),  activation='tanh', return_sequences=False)))
+        
         # adding droupout layer
         model.add(Dropout(self.dropout))
         # final layer
         model.add(Dense(self.train_data_y.shape[1]))
+    
         return model
 
 def metricplot(df, xlab, ylab_1,ylab_2, path):
@@ -207,13 +209,13 @@ if __name__ == '__main__':
 
     # model hyperparameters!
     lag = 1
-    n_hidden_layers = 2
+    n_hidden_layers = 1
     batch_size = 256 #256
     units = 256
-    dropout = 0.0
-    epochs = 1
+    dropout = 0.2
+    epochs = 250
     learning_rate = 0.001
-    reg = L1L2(l1=0.03, l2=0.0)
+    reg = L1L2(l1=0.03, l2=0.01)
 
     # creating main folder
     today = datetime.now()
@@ -347,7 +349,7 @@ if __name__ == '__main__':
     
     y_pred_close = model_eval.predict(X_test_data)
     y_pred_close_copies = np.repeat(y_pred_close, X_train.shape[1], axis = -1)
-    print(y_pred_close_copies)
+    #print(y_pred_close_copies)
     y_pred_scaled = scaler.inverse_transform(y_pred_close_copies)[:,0]
 
     y_test_true = np.repeat(y_test_data, X_train.shape[1], axis = -1)
