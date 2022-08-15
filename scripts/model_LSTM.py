@@ -44,8 +44,11 @@ class DataFormatting():
 
         # converting time colum from object type to datetime format
         df['date'] = pd.to_datetime(df['date'])
+        # creating a ema feature
+        df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
+        df = df.dropna()
         # splitting the dataframe in to X and y 
-        df_data = df[['open','close']] #,'high','low'
+        df_data = df[['open','close','SMA_10']] #,'high','low'
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -113,15 +116,25 @@ class LSTM_model():
         model = Sequential()
         # first lstm layer
         model.add(LSTM(self.units, activation='tanh', input_shape=(self.train_data_X.shape[1], self.train_data_X.shape[2]), kernel_regularizer=self.reg, return_sequences=True))
-        # building hidden layers
-        for i in range(1, self.n_hidden_layers):
-            # for the last layer as the return sequence is False
-            if i == self.n_hidden_layers -1:
-                model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=False))
-            else:
-                model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=True))
-        # adding droupout layer
+
+        if self.n_hidden_layers !=1:
+
+            # building hidden layers
+            for i in range(1, self.n_hidden_layers):
+                # for the last layer as the return sequence is False
+                if i == self.n_hidden_layers -1:
+                    model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=False))
+                else:
+                    model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=True))
+
+        else:
+            model.add(LSTM(int(self.units/(2)),  activation='tanh', return_sequences=False))
+
+        # adding dropout layer
         model.add(Dropout(self.dropout))
+
+        # adding another dense layer
+        model.add(Dense(100, activation ='tanh'))
         # final layer
         model.add(Dense(self.train_data_y.shape[1]))
         return model
@@ -196,9 +209,9 @@ if __name__ == '__main__':
     lag = 1
     n_hidden_layers = 2
     batch_size = 256 #256
-    units = 128
+    units = 256
     dropout = 0.0
-    epochs = 50
+    epochs = 1
     learning_rate = 0.001
     reg = L1L2(l1=0.03, l2=0.0)
 
@@ -279,7 +292,7 @@ if __name__ == '__main__':
 
     # calling the model
     model = model_init.build_model()
-
+    print(model.summary())
     # metrics for evaluating the model
     metrics = [tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanAbsolutePercentageError()]
 
@@ -334,6 +347,7 @@ if __name__ == '__main__':
     
     y_pred_close = model_eval.predict(X_test_data)
     y_pred_close_copies = np.repeat(y_pred_close, X_train.shape[1], axis = -1)
+    print(y_pred_close_copies)
     y_pred_scaled = scaler.inverse_transform(y_pred_close_copies)[:,0]
 
     y_test_true = np.repeat(y_test_data, X_train.shape[1], axis = -1)
@@ -351,7 +365,7 @@ if __name__ == '__main__':
     future_days = 10
     
     forecast_date = pd.date_range(list(df_datetime['date'])[-1], periods = future_days, freq = '1D').tolist()
-
+    #print(forecast_date)
     forecast = model_eval.predict(X_data[-future_days:])
     #print(forecast)
     forecast_copies = np.repeat(forecast, X_data.shape[2], axis = -1 )
