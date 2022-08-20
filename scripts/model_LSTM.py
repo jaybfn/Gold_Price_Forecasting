@@ -48,7 +48,7 @@ class DataFormatting():
         df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
         df = df.dropna()
         # splitting the dataframe in to X and y 
-        df_data = df[['open','close','high','low','SMA_10']] #,
+        df_data = df[['close']] #,['open','close','high','low','SMA_10']
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -87,7 +87,7 @@ def data_transformation(data, lags = 5):
     
     for i in range(lags, len(data)):
         X_data.append(data[i-lags: i, 0: data.shape[1]])
-        y_data.append(data[i,1:2]) # extracts close price with specific lag as price to be predicted.
+        y_data.append(data[i,0:1]) # extracts close price with specific lag as price to be predicted.
 
     # convert the list to numpy array
 
@@ -209,12 +209,12 @@ if __name__ == '__main__':
 
     # model hyperparameters!
     lag = 1
-    n_hidden_layers = 1
-    batch_size = 256 #256
-    units = 256
+    n_hidden_layers = 2
+    batch_size = 64 #256
+    units = 32
     dropout = 0.2
-    epochs = 250
-    learning_rate = 0.001
+    epochs = 100
+    learning_rate = 0.01
     reg = L1L2(l1=0.03, l2=0.01)
 
     # creating main folder
