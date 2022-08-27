@@ -48,7 +48,7 @@ class DataFormatting():
         df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
         df = df.dropna()
         # splitting the dataframe in to X and y 
-        df_data = df[['close']] #,['open','close','high','low','SMA_10']
+        df_data = df[['open','close','high','low','SMA_10']] #,
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -56,7 +56,23 @@ class DataFormatting():
 
 # split the dataset in tain and test!
 
-def train_test_split(data, train_split=0.7):
+# def train_test_split(data, train_split=0.7):
+    
+#     """ This function will split the dataframe into training and testing set.
+#     Inputs: data: Pandas DatFrame
+#             train_split: default is set to 0.9. Its a ratio to split the trining and testing datset.
+#     """
+#     split = int(train_split*len(data)) # for training
+#     split_test = int(0.90*len(data))
+#     X_train = data.iloc[:split,:]
+#     X_val = data.iloc[split:split_test,:]
+#     X_test = data.iloc[split_test:,:]
+
+#     return X_train, X_val, X_test
+
+# split the dataset in tain and test!
+
+def train_test_split(data, y_data, train_split=0.7):
     
     """ This function will split the dataframe into training and testing set.
     Inputs: data: Pandas DatFrame
@@ -64,11 +80,14 @@ def train_test_split(data, train_split=0.7):
     """
     split = int(train_split*len(data)) # for training
     split_test = int(0.90*len(data))
-    X_train = data.iloc[:split,:]
-    X_val = data.iloc[split:split_test,:]
-    X_test = data.iloc[split_test:,:]
+    X_train = data[:split]
+    y_train = y_data[:split]
+    X_val = data[split:split_test]
+    y_val = y_data[split:split_test]
+    X_test = data[split_test:]
+    y_test = y_data[split_test:]
 
-    return X_train, X_val, X_test
+    return X_train, y_train, X_val, y_val,  X_test, y_test
 
 
 # Data transformation (changing data shape to model requirement)
@@ -128,7 +147,7 @@ class LSTM_model():
                     model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=True))
 
         else:
-            model.add(LSTM(int(self.units/(2)),  activation='tanh', return_sequences=False))
+            model.add(LSTM(int(self.units),  activation='tanh', return_sequences=True))
 
         # adding dropout layer
         model.add(Dropout(self.dropout))
@@ -209,13 +228,13 @@ if __name__ == '__main__':
 
     # model hyperparameters!
     lag = 1
-    n_hidden_layers = 2
-    batch_size = 64 #256
-    units = 32
+    n_hidden_layers = 1
+    batch_size = 128 #256
+    units = 256
     dropout = 0.2
-    epochs = 100
-    learning_rate = 0.01
-    reg = L1L2(l1=0.03, l2=0.01)
+    epochs = 1
+    learning_rate = 0.0001
+    reg = L1L2(l1=0.03, l2=0)
 
     # creating main folder
     today = datetime.now()
@@ -254,23 +273,31 @@ if __name__ == '__main__':
     print('\n')
     print(df_data.head())
 
-    # create train test split
+    #########################################################################
 
-    X_train, X_val , X_test = train_test_split(df_data, train_split=0.7)
+    # # create train test split
+
+    # X_train, X_val , X_test = train_test_split(df_data, train_split=0.5)
+
+    #########################################################################
+
 
     # normalize train, val and test dataset
 
     # initialize StandartScaler()
     scaler = StandardScaler()
-    scaler = scaler.fit(X_train)
-    data_fit_transformed = scaler.transform(X_train)
-    val_transformed = scaler.transform(X_val)
-    test_transformed = scaler.transform(X_test)
+    scaler = scaler.fit(df_data)
+    data_fit_transformed = scaler.transform(df_data)
+
+    # val_transformed = scaler.transform(X_val)
+    # test_transformed = scaler.transform(X_test)
+
     
     print('\n')
     print('Displaying top 5 rows of all the scaled dataset:')
     print('\n')
-    print('The train dateset:','\n''\n',data_fit_transformed[0:5],'\n''\n', 'The validation dataset:','\n''\n',val_transformed[0:5],'\n''\n','The test dataset:','\n''\n',test_transformed[0:5])
+    #print('The train dateset:','\n''\n',data_fit_transformed[0:5],'\n''\n', 'The validation dataset:','\n''\n',val_transformed[0:5],'\n''\n','The test dataset:','\n''\n',test_transformed[0:5])
+    print('The train dateset:','\n''\n',data_fit_transformed[0:5])
 
     
     # changing shape of the data to match the model requirement!
@@ -282,12 +309,15 @@ if __name__ == '__main__':
     print(f' Input shape X:',X_data.shape, f'Input shape y:',y_data.shape)
     print('\n')
 
-    X_val_data, y_val_data = data_transformation(val_transformed, lags = lag)
-    X_test_data, y_test_data = data_transformation(test_transformed, lags= lag)
-
+    # X_val_data, y_val_data = data_transformation(val_transformed, lags = lag)
+    # X_test_data, y_test_data = data_transformation(test_transformed, lags= lag)
+    
+    # create train test split
+    X_train, y_train, X_val, y_val,  X_test, y_test = train_test_split(X_data, y_data, train_split=0.7)
+    print(X_train.shape)
     # input data
-    train_data_X = X_data 
-    train_data_y = y_data
+    train_data_X = X_train 
+    train_data_y = y_train
 
     # initializing model
     model_init = LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
@@ -314,7 +344,7 @@ if __name__ == '__main__':
     history = model.fit(train_data_X,train_data_y, 
                         epochs = epochs, 
                         batch_size = batch_size, 
-                        validation_data=(X_val_data, y_val_data), 
+                        validation_data=(X_val, y_val), 
                         verbose = 1,
                         callbacks=[cb],
                         shuffle= False)
@@ -326,7 +356,7 @@ if __name__ == '__main__':
     print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
 
     # validation dataset
-    val_loss, val_RMSE, val_MAE, val_MAPE = model.evaluate(X_val_data, y_val_data)
+    val_loss, val_RMSE, val_MAE, val_MAPE = model.evaluate(X_val, y_val)
     print('\n','Evaluation of Validation dataset:','\n''\n','val_loss:',round(val_loss,3),'\n','val_RMSE:',round(val_RMSE,3),'\n', 'val_MAE:',round(val_MAE,3),'\n','MAPE:',round(MAPE,3))
     # path to save model
 
@@ -341,18 +371,17 @@ if __name__ == '__main__':
     metricplot(df, 'epoch', 'root_mean_squared_error','val_root_mean_squared_error', path_metrics)
 
 
-
+   
     model_name = 'lstm_'+ str(units)+'.h5'
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
     # prediction on the test set
     
-    y_pred_close = model_eval.predict(X_test_data)
-    y_pred_close_copies = np.repeat(y_pred_close, X_train.shape[1], axis = -1)
-    #print(y_pred_close_copies)
+    y_pred_close = model_eval.predict(X_test)
+    y_pred_close_copies = np.repeat(y_pred_close, df_data.shape[1], axis = -1)
     y_pred_scaled = scaler.inverse_transform(y_pred_close_copies)[:,0]
 
-    y_test_true = np.repeat(y_test_data, X_train.shape[1], axis = -1)
+    y_test_true = np.repeat(y_test, df_data.shape[1], axis = -1)
     y_test_scaled = scaler.inverse_transform(y_test_true)[:,0]
     print(y_test_scaled[:10])
     print(y_pred_scaled[:10])
@@ -368,9 +397,9 @@ if __name__ == '__main__':
     
     forecast_date = pd.date_range(list(df_datetime['date'])[-1], periods = future_days, freq = '1D').tolist()
     #print(forecast_date)
-    forecast = model_eval.predict(X_data[-future_days:])
+    forecast = model_eval.predict(X_train[-future_days:])
     #print(forecast)
-    forecast_copies = np.repeat(forecast, X_data.shape[2], axis = -1 )
+    forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
     #print(forecast_copies)
     y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
     print('The forecast for the future 10 days is:','\n',y_pred_fut)
