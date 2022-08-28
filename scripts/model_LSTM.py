@@ -147,16 +147,15 @@ class LSTM_model():
                     model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=True))
 
         else:
-            model.add(LSTM(int(self.units),  activation='tanh', return_sequences=True))
+            model.add(LSTM(int(self.units/2),  activation='tanh', return_sequences=False))
 
         # adding dropout layer
         model.add(Dropout(self.dropout))
         # final layer
         model.add(Dense(self.train_data_y.shape[1]))
 
-        
-
         return model
+
 
 class Bi_LSTM_model():
     
@@ -227,14 +226,33 @@ if __name__ == '__main__':
     keras.backend.clear_session()
 
     # model hyperparameters!
-    lag = 1
-    n_hidden_layers = 1
+    # lag = 1
+    # n_hidden_layers = 1
+    # batch_size = 16 #256
+    # units = 64
+    # dropout = 0.2
+    # epochs = 100
+    # learning_rate = 0.0001
+    # reg = L1L2(l1=0.03, l2=0)
+
+    # best parameters
+    # lag = 1
+    # n_hidden_layers = 2
+    # batch_size = 128 #256
+    # units = 128
+    # dropout = 0.2
+    # epochs = 100
+    # learning_rate = 0.0001
+    # reg = L1L2(l1=0.0, l2=0.02)
+
+    lag = 3
+    n_hidden_layers = 2
     batch_size = 128 #256
-    units = 256
+    units = 128
     dropout = 0.2
-    epochs = 1
+    epochs = 100
     learning_rate = 0.0001
-    reg = L1L2(l1=0.03, l2=0)
+    reg = L1L2(l1=0.0, l2=0.02)
 
     # creating main folder
     today = datetime.now()
@@ -312,12 +330,13 @@ if __name__ == '__main__':
     # X_val_data, y_val_data = data_transformation(val_transformed, lags = lag)
     # X_test_data, y_test_data = data_transformation(test_transformed, lags= lag)
     
-    # create train test split
-    X_train, y_train, X_val, y_val,  X_test, y_test = train_test_split(X_data, y_data, train_split=0.7)
-    print(X_train.shape)
+    # # create train test split
+    # X_train, y_train, X_val, y_val,  X_test, y_test = train_test_split(X_data, y_data, train_split=0.7)
+    # print(X_train.shape)
+
     # input data
-    train_data_X = X_train 
-    train_data_y = y_train
+    train_data_X = X_data 
+    train_data_y = y_data
 
     # initializing model
     model_init = LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
@@ -344,7 +363,7 @@ if __name__ == '__main__':
     history = model.fit(train_data_X,train_data_y, 
                         epochs = epochs, 
                         batch_size = batch_size, 
-                        validation_data=(X_val, y_val), 
+                        validation_split = 0.1, 
                         verbose = 1,
                         callbacks=[cb],
                         shuffle= False)
@@ -356,8 +375,10 @@ if __name__ == '__main__':
     print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
 
     # validation dataset
-    val_loss, val_RMSE, val_MAE, val_MAPE = model.evaluate(X_val, y_val)
-    print('\n','Evaluation of Validation dataset:','\n''\n','val_loss:',round(val_loss,3),'\n','val_RMSE:',round(val_RMSE,3),'\n', 'val_MAE:',round(val_MAE,3),'\n','MAPE:',round(MAPE,3))
+
+    # val_loss, val_RMSE, val_MAE, val_MAPE = model.evaluate(X_val, y_val)
+    # print('\n','Evaluation of Validation dataset:','\n''\n','val_loss:',round(val_loss,3),'\n','val_RMSE:',round(val_RMSE,3),'\n', 'val_MAE:',round(val_MAE,3),'\n','MAPE:',round(MAPE,3))
+    
     # path to save model
 
     model.save(path_model+'/'+model_name)   
@@ -371,33 +392,32 @@ if __name__ == '__main__':
     metricplot(df, 'epoch', 'root_mean_squared_error','val_root_mean_squared_error', path_metrics)
 
 
-   
     model_name = 'lstm_'+ str(units)+'.h5'
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
     # prediction on the test set
     
-    y_pred_close = model_eval.predict(X_test)
-    y_pred_close_copies = np.repeat(y_pred_close, df_data.shape[1], axis = -1)
-    y_pred_scaled = scaler.inverse_transform(y_pred_close_copies)[:,0]
+    # y_pred_close = model_eval.predict(X_test)
+    # y_pred_close_copies = np.repeat(y_pred_close, df_data.shape[1], axis = -1)
+    # y_pred_scaled = scaler.inverse_transform(y_pred_close_copies)[:,0]
 
-    y_test_true = np.repeat(y_test, df_data.shape[1], axis = -1)
-    y_test_scaled = scaler.inverse_transform(y_test_true)[:,0]
-    print(y_test_scaled[:10])
-    print(y_pred_scaled[:10])
-    # lets compare the predicted output and the original values using RMSE as a metric
-    RMSE_test = sqrt(mean_squared_error(y_test_scaled, y_pred_scaled))
-    #rmse = tf.keras.metrics.RootMeanSquaredError()
-    #RMSE_test = rmse(y_test_scaled, y_pred_scaled)
-    print('\n')
-    print('The RMSE on the test data set is:',RMSE_test)
-    print('\n')
+    # y_test_true = np.repeat(y_test, df_data.shape[1], axis = -1)
+    # y_test_scaled = scaler.inverse_transform(y_test_true)[:,0]
+    # print(y_test_scaled[:10])
+    # print(y_pred_scaled[:10])
+    # # lets compare the predicted output and the original values using RMSE as a metric
+    # RMSE_test = sqrt(mean_squared_error(y_test_scaled, y_pred_scaled))
+    # #rmse = tf.keras.metrics.RootMeanSquaredError()
+    # #RMSE_test = rmse(y_test_scaled, y_pred_scaled)
+    # print('\n')
+    # print('The RMSE on the test data set is:',RMSE_test)
+    # print('\n')
 
     future_days = 10
     
     forecast_date = pd.date_range(list(df_datetime['date'])[-1], periods = future_days, freq = '1D').tolist()
-    #print(forecast_date)
-    forecast = model_eval.predict(X_train[-future_days:])
+    print(forecast_date)
+    forecast = model_eval.predict(train_data_X[-future_days:])
     #print(forecast)
     forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
     #print(forecast_copies)
