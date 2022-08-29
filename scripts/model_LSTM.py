@@ -31,6 +31,28 @@ def create_dir(path):
             os.makedirs(path, exist_ok = False)
             print("New directory is created")
 
+# hyperparameters to dictionary
+dictionary = {
+    "lags": lag,
+    "n_hidden_layers": n_hidden_layers,
+    "batch_size": batch_size,
+    "units": units,
+    "dropout": dropout,
+    "epochs": epochs,
+    "learning_rate": learning_rate,
+    "reg_l1": l1,
+    "reg_l2": l2  
+}
+
+# dumping all the hyperparameters to json file!
+def hyperparms(dictionary):
+    # Serializing json
+    json_object = json.dumps(dictionary, indent=4)
+    
+    # Writing to sample.json
+    with open(path_metrics +'/'+ 'hyperparm.json', "w") as outfile:
+        outfile.write(json_object)
+
 #load and format data
 
 class DataFormatting():
@@ -233,7 +255,9 @@ if __name__ == '__main__':
     # dropout = 0.2
     # epochs = 100
     # learning_rate = 0.0001
-    # reg = L1L2(l1=0.03, l2=0)
+    # l1 = 0.03
+    # l2 = 0.00
+    # reg = L1L2(l1=l1, l2=l2)
 
     # best parameters
     # lag = 1
@@ -243,7 +267,9 @@ if __name__ == '__main__':
     # dropout = 0.2
     # epochs = 100
     # learning_rate = 0.0001
-    # reg = L1L2(l1=0.0, l2=0.02)
+    # l1 = 0.00
+    # l2 = 0.02
+    # reg = L1L2(l1=l1, l2=l2)
 
     lag = 1
     n_hidden_layers = 5
@@ -252,7 +278,14 @@ if __name__ == '__main__':
     dropout = 0.5
     epochs = 1
     learning_rate = 0.0001
-    reg = L1L2(l1=0.0, l2=0.02)
+    l1 = 0.00
+    l2 = 0.02
+    reg = L1L2(l1=l1, l2=l2)
+
+    print('The hyperparameters for the current experiments:')
+    print(dictionary)
+    # dump all the hyperparameters in to a dictionary and save to .json file
+    hyperparms(dictionary)
 
     # creating main folder
     today = datetime.now()
