@@ -1,0 +1,2 @@
+from 29-08-2022 to 5 days, the price of gold is expected to close at on daily timeframe: 
+[1739.4149 1729.3276 1730.7557 1735.3428 1740.1218]
