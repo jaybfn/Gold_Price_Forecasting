@@ -245,12 +245,12 @@ if __name__ == '__main__':
     # learning_rate = 0.0001
     # reg = L1L2(l1=0.0, l2=0.02)
 
-    lag = 3
-    n_hidden_layers = 2
+    lag = 1
+    n_hidden_layers = 5
     batch_size = 128 #256
     units = 128
-    dropout = 0.2
-    epochs = 100
+    dropout = 0.5
+    epochs = 1
     learning_rate = 0.0001
     reg = L1L2(l1=0.0, l2=0.02)
 
