@@ -2,6 +2,7 @@
 
 import os
 import warnings
+import json
 from datetime import datetime 
 import pandas as pd
 import numpy as np
@@ -30,6 +31,16 @@ def create_dir(path):
         if not isExist:
             os.makedirs(path, exist_ok = False)
             print("New directory is created")
+
+
+# dumping all the hyperparameters to json file!
+def hyperparms(dictionary):
+    # Serializing json
+    json_object = json.dumps(dictionary, indent=4)
+    
+    # Writing to sample.json
+    with open(path_metrics +'/'+ 'hyperparm.json', "w") as outfile:
+        outfile.write(json_object)
 
 #load and format data
 
@@ -210,7 +221,9 @@ if __name__ == '__main__':
     dropout = 0.2
     epochs = 100
     learning_rate = 0.0001
-    reg = L1L2(l1=0.0, l2=0.02)
+    l1 = 0.00
+    l2 = 0.02
+    reg = L1L2(l1=l1, l2=l2)
 
     # creating main folder
     today = datetime.now()
@@ -237,6 +250,24 @@ if __name__ == '__main__':
     folder = 'model_checkpoint'
     path_checkpoint = path_main +'/'+ folder
     create_dir(path_checkpoint)
+
+    # hyperparameters to dictionary
+    dictionary = {
+    "lags": lag,
+    "n_hidden_layers": n_hidden_layers,
+    "batch_size": batch_size,
+    "units": units,
+    "dropout": dropout,
+    "epochs": epochs,
+    "learning_rate": learning_rate,
+    "reg_l1": l1,
+    "reg_l2": l2  
+    }
+
+    print('The hyperparameters for the current experiments:')
+    print(dictionary)
+    # dump all the hyperparameters in to a dictionary and save to .json file
+    hyperparms(dictionary)
 
     # loading the dataset!
     data = pd.read_csv('../data/gold_mt5.csv',index_col=[0]) 
@@ -338,11 +369,9 @@ if __name__ == '__main__':
     forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
     print(forecasting_dates)
 
-    #forecast_date = pd.date_range(list(df_datetime['date'])[-1], periods = future_days, freq = '1D').tolist()
-    #print(forecast_date)
     forecast = model_eval.predict(train_data_X[-future_days:])
     #print(forecast)
     forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
     #print(forecast_copies)
     y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
-    print('The forecast for the future 10 days is:','\n',y_pred_fut)
+    print('The forecast for the future 5 days is:','\n',y_pred_fut)
