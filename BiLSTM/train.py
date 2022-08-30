@@ -65,42 +65,6 @@ class DataFormatting():
         return df_data, df_datetime
 
 
-# split the dataset in tain and test!
-
-# def train_test_split(data, train_split=0.7):
-    
-#     """ This function will split the dataframe into training and testing set.
-#     Inputs: data: Pandas DatFrame
-#             train_split: default is set to 0.9. Its a ratio to split the trining and testing datset.
-#     """
-#     split = int(train_split*len(data)) # for training
-#     split_test = int(0.90*len(data))
-#     X_train = data.iloc[:split,:]
-#     X_val = data.iloc[split:split_test,:]
-#     X_test = data.iloc[split_test:,:]
-
-#     return X_train, X_val, X_test
-
-# split the dataset in tain and test!
-
-def train_test_split(data, y_data, train_split=0.7):
-    
-    """ This function will split the dataframe into training and testing set.
-    Inputs: data: Pandas DatFrame
-            train_split: default is set to 0.9. Its a ratio to split the trining and testing datset.
-    """
-    split = int(train_split*len(data)) # for training
-    split_test = int(0.90*len(data))
-    X_train = data[:split]
-    y_train = y_data[:split]
-    X_val = data[split:split_test]
-    y_val = y_data[split:split_test]
-    X_test = data[split_test:]
-    y_test = y_data[split_test:]
-
-    return X_train, y_train, X_val, y_val,  X_test, y_test
-
-
 # Data transformation (changing data shape to model requirement)
 
 def data_transformation(data, lags = 5):
@@ -305,7 +269,7 @@ if __name__ == '__main__':
     print('\n')
 
     # input data
-    train_data_X = X_data 
+    train_data_X = X_data
     train_data_y = y_data
 
     # initializing model
@@ -322,7 +286,7 @@ if __name__ == '__main__':
     model.compile(optimizer=Adam(learning_rate = learning_rate), loss='mse', metrics = metrics)
     print(model.summary())
     # setting the model file name
-    model_name = 'lstm_'+ str(units)+'.h5'
+    model_name = 'Bilstm_'+ str(units)+'.h5'
 
     # setting the callback function
     cb = [
@@ -333,8 +297,8 @@ if __name__ == '__main__':
     # model fitting protocol
     history = model.fit(train_data_X,train_data_y, 
                         epochs = epochs, 
-                        batch_size = batch_size, 
-                        validation_split = 0.1, 
+                        batch_size = batch_size,  
+                        validation_split=0.1,
                         verbose = 1,
                         callbacks=[cb],
                         shuffle= False)
@@ -344,7 +308,6 @@ if __name__ == '__main__':
     # training dataset
     train_loss, RMSE, MAE, MAPE = model.evaluate(train_data_X,train_data_y)
     print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
-
 
     model.save(path_model+'/'+model_name)   
 
@@ -356,16 +319,14 @@ if __name__ == '__main__':
     metricplot(df, 'epoch', 'mean_absolute_percentage_error','val_mean_absolute_percentage_error', path_metrics)
     metricplot(df, 'epoch', 'root_mean_squared_error','val_root_mean_squared_error', path_metrics)
 
-
-    model_name = 'lstm_'+ str(units)+'.h5'
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
- 
+    # get future dates
     future_days = 5
     
     startdate = list(df_datetime['date'])[-1]
     startdate = pd.to_datetime(startdate) + pd.DateOffset(days=1)
-    enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days)
+    enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days+1)
     forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
     print(forecasting_dates)
 
