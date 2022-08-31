@@ -183,37 +183,53 @@ if __name__ == '__main__':
     batch_size = 16 #256
     units = 64
     dropout = 0.2
-    epochs = 100
+    epochs = 200
     learning_rate = 0.0001
     l1 = 0.00
     l2 = 0.02
     reg = L1L2(l1=l1, l2=l2)
+
+  
 
     # creating main folder
     today = datetime.now()
     today  = today.strftime('%Y_%m_%d')
     path = '../Model_Outputs/'+ today
     create_dir(path)
+
+    # creating directory to save model and its output
+    EXPERIMENT_NAME = input('Enter new Experiment name:')
+    print('\n')
+    print('A folder with',EXPERIMENT_NAME,'name has be created to store all the model details!')
+    print('\n')
+    folder = EXPERIMENT_NAME
+    path_main = path + '/'+ folder
+    create_dir(path_main)
  
     # creating directory to save model and its output
     folder = 'model_Bilstm'+ str(units) + '_' + str(n_hidden_layers)
-    path_main = path + '/'+ folder
-    create_dir(path_main)
+    path_dir = path_main + '/'+ folder
+    create_dir(path_dir)
 
     # creating directory to save all the metric data
     folder = 'metrics'
-    path_metrics = path_main +'/'+ folder
+    path_metrics = path_dir +'/'+ folder
     create_dir(path_metrics)
 
     # creating folder to save model.h5 file
     folder = 'model'
-    path_model = path_main +'/'+ folder
+    path_model = path_dir +'/'+ folder
     create_dir(path_model)
 
     # creating folder to save model.h5 file
     folder = 'model_checkpoint'
-    path_checkpoint = path_main +'/'+ folder
+    path_checkpoint = path_dir +'/'+ folder
     create_dir(path_checkpoint)
+
+    # creating folder to save model.h5 file
+    folder = 'forecasting_resutls'
+    path_forecast = path_dir +'/'+ folder
+    create_dir(path_forecast)
 
     # hyperparameters to dictionary
     dictionary = {
@@ -328,11 +344,17 @@ if __name__ == '__main__':
     startdate = pd.to_datetime(startdate) + pd.DateOffset(days=1)
     enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days+1)
     forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
-    print(forecasting_dates)
+    # dates =  {'dates':forecasting_dates }
+    # forecasting_df = pd.DataFrame(data = dates)
+    # print(forecasting_df)
 
     forecast = model_eval.predict(train_data_X[-future_days:])
     #print(forecast)
     forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
     #print(forecast_copies)
     y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
-    print('The forecast for the future 5 days is:','\n',y_pred_fut)
+
+    forecast_close = {'dates':forecasting_dates ,'close': y_pred_fut}
+    forecasting_df = pd.DataFrame(data = forecast_close)
+    forecasting_df.to_csv(path_forecast +'/'+ 'forecast.csv')
+    print('The forecast for the future 5 days is:','\n',forecasting_df)
