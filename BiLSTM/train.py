@@ -180,12 +180,12 @@ if __name__ == '__main__':
 
     lag = 1
     n_hidden_layers = 3
-    batch_size = 16 #256
+    batch_size = 8 #256
     units = 64
-    dropout = 0.2
+    dropout = 0.3
     epochs = 200
     learning_rate = 0.0001
-    l1 = 0.00
+    l1 = 0.03
     l2 = 0.02
     reg = L1L2(l1=l1, l2=l2)
 
