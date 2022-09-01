@@ -180,10 +180,10 @@ if __name__ == '__main__':
 
     lag = 1
     n_hidden_layers = 3
-    batch_size = 16 #256
+    batch_size = 8 #256
     units = 64
-    dropout = 0.2
-    epochs = 20
+    dropout = 0.3
+    epochs = 100
     learning_rate = 0.0001
     l1 = 0.0
     l2 = 0.02
@@ -305,7 +305,7 @@ if __name__ == '__main__':
     model.compile(optimizer=Adam(learning_rate = learning_rate), loss='mse', metrics = metrics)
     print(model.summary())
     # setting the model file name
-    #model_name = 'Bilstm_'+ str(units)+'.h5'
+    model_name = 'Bilstm_'+ str(units)+'.h5'
 
     # setting the callback function
     cb = [
@@ -341,7 +341,7 @@ if __name__ == '__main__':
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
     # get future dates
-    future_days = 10
+    future_days = 5
     
     startdate = list(df_datetime['date'])[-1]
     startdate = pd.to_datetime(startdate) + pd.DateOffset(days=1)
@@ -349,13 +349,17 @@ if __name__ == '__main__':
     forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
     # dates =  {'dates':forecasting_dates }
     # forecasting_df = pd.DataFrame(data = dates)
-    # print(forecasting_df)
+    #print(forecasting_dates)
 
     forecast = model_eval.predict(train_data_X[-future_days:])
     #print(forecast)
     forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
     #print(forecast_copies)
     y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
+
+
+
+    #print('The forecast for the future 5 days is:','\n',y_pred_fut)
 
     forecast_close = {'dates':forecasting_dates ,'close': y_pred_fut}
     forecasting_df = pd.DataFrame(data = forecast_close)
