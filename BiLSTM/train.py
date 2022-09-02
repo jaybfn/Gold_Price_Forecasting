@@ -54,7 +54,7 @@ class DataFormatting():
     def dataset(df):
 
         # converting time colum from object type to datetime format
-        df['date'] = pd.to_datetime(df['date'])
+        df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%d/%m/%Y')
         # creating a ema feature
         df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
         df = df.dropna()
@@ -180,7 +180,7 @@ if __name__ == '__main__':
 
     lag = 1
     n_hidden_layers = 3
-    batch_size = 8 #256
+    batch_size = 16 #256
     units = 64
     dropout = 0.3
     epochs = 200
@@ -188,8 +188,6 @@ if __name__ == '__main__':
     l1 = 0.03
     l2 = 0.02
     reg = L1L2(l1=l1, l2=l2)
-
-  
 
     # creating main folder
     today = datetime.now()
@@ -284,6 +282,9 @@ if __name__ == '__main__':
     print(f' Input shape X:',X_data.shape, f'Input shape y:',y_data.shape)
     print('\n')
 
+    # # setting the model file name
+    model_name = 'Bilstm_'+ str(units)+'.h5'
+
     # input data
     train_data_X = X_data
     train_data_y = y_data
@@ -301,8 +302,7 @@ if __name__ == '__main__':
     # model compiler
     model.compile(optimizer=Adam(learning_rate = learning_rate), loss='mse', metrics = metrics)
     print(model.summary())
-    # setting the model file name
-    model_name = 'Bilstm_'+ str(units)+'.h5'
+    
 
     # setting the callback function
     cb = [
@@ -338,7 +338,7 @@ if __name__ == '__main__':
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
     # get future dates
-    future_days = 5
+    future_days = 10
     
     startdate = list(df_datetime['date'])[-1]
     startdate = pd.to_datetime(startdate) + pd.DateOffset(days=1)
@@ -347,8 +347,8 @@ if __name__ == '__main__':
     # dates =  {'dates':forecasting_dates }
     # forecasting_df = pd.DataFrame(data = dates)
     # print(forecasting_df)
-
-    forecast = model_eval.predict(train_data_X[-future_days:])
+    number_of_days = len(forecasting_dates)
+    forecast = model_eval.predict(train_data_X[-len(forecasting_dates):])
     #print(forecast)
     forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
     #print(forecast_copies)
@@ -357,4 +357,4 @@ if __name__ == '__main__':
     forecast_close = {'dates':forecasting_dates ,'close': y_pred_fut}
     forecasting_df = pd.DataFrame(data = forecast_close)
     forecasting_df.to_csv(path_forecast +'/'+ 'forecast.csv')
-    print('The forecast for the future 5 days is:','\n',forecasting_df)
+    print('The forecast for the future',number_of_days,'days is:','\n',forecasting_df)
