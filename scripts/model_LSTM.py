@@ -65,7 +65,7 @@ class DataFormatting():
     def dataset(df):
 
         # converting time colum from object type to datetime format
-        df['date'] = pd.to_datetime(df['date'])
+        df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%d/%m/%Y')
         # creating a ema feature
         df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
         df = df.dropna()
@@ -282,11 +282,6 @@ if __name__ == '__main__':
     l2 = 0.02
     reg = L1L2(l1=l1, l2=l2)
 
-    print('The hyperparameters for the current experiments:')
-    print(dictionary)
-    # dump all the hyperparameters in to a dictionary and save to .json file
-    hyperparms(dictionary)
-
     # creating main folder
     today = datetime.now()
     today  = today.strftime('%Y_%m_%d')
@@ -312,6 +307,12 @@ if __name__ == '__main__':
     folder = 'model_checkpoint'
     path_checkpoint = path_main +'/'+ folder
     create_dir(path_checkpoint)
+
+
+    print('The hyperparameters for the current experiments:')
+    print(dictionary)
+    # dump all the hyperparameters in to a dictionary and save to .json file
+    hyperparms(dictionary)
 
     # loading the dataset!
     data = pd.read_csv('../data/gold_mt5.csv',index_col=[0]) 
