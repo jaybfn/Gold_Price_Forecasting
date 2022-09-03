@@ -158,26 +158,7 @@ if __name__ == '__main__':
     tf.random.set_seed(42) 
     keras.backend.clear_session()
 
-    # model hyperparameters!
-    # lag = 1
-    # n_hidden_layers = 1
-    # batch_size = 16 #256
-    # units = 64
-    # dropout = 0.2
-    # epochs = 100
-    # learning_rate = 0.0001
-    # reg = L1L2(l1=0.03, l2=0)
-
-    # best parameters
-    # lag = 1
-    # n_hidden_layers = 2
-    # batch_size = 128 #256
-    # units = 128
-    # dropout = 0.2
-    # epochs = 100
-    # learning_rate = 0.0001
-    # reg = L1L2(l1=0.0, l2=0.02)
-
+    # hyperparameters
     lag = 1
     n_hidden_layers = 3
     batch_size = 16 #256
