@@ -178,14 +178,14 @@ if __name__ == '__main__':
     # learning_rate = 0.0001
     # reg = L1L2(l1=0.0, l2=0.02)
 
-    lag = 1
+    lag = 2
     n_hidden_layers = 3
-    batch_size = 8 #256
+    batch_size = 16 #256
     units = 64
     dropout = 0.3
-    epochs = 100
+    epochs = 200
     learning_rate = 0.0001
-    l1 = 0.0
+    l1 = 0.03
     l2 = 0.02
     reg = L1L2(l1=l1, l2=l2)
 
@@ -296,7 +296,7 @@ if __name__ == '__main__':
     model.build((train_data_X.shape[0],train_data_X.shape[1], train_data_X.shape[2]))
    
     # loading weights:
-    model.load_weights('../Model_Outputs/2022_09_01/exp4/model_Bilstm64_3/model/Bilstm_64.h5')
+    model.load_weights('../Model_Outputs/2022_09_03/exp12/model_Bilstm64_3/model/Bilstm_64.h5')
     
     # metrics for evaluating the model
     metrics = [tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanAbsolutePercentageError()]
@@ -340,8 +340,8 @@ if __name__ == '__main__':
 
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
-    # get future dates
-    future_days = 5
+   # get future dates
+    future_days = 10
     
     startdate = list(df_datetime['date'])[-1]
     startdate = pd.to_datetime(startdate) + pd.DateOffset(days=1)
@@ -349,19 +349,15 @@ if __name__ == '__main__':
     forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
     # dates =  {'dates':forecasting_dates }
     # forecasting_df = pd.DataFrame(data = dates)
-    #print(forecasting_dates)
-
-    forecast = model_eval.predict(train_data_X[-future_days:])
+    # print(forecasting_df)
+    number_of_days = len(forecasting_dates)
+    forecast = model_eval.predict(train_data_X[-len(forecasting_dates):])
     #print(forecast)
     forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
     #print(forecast_copies)
     y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
 
-
-
-    #print('The forecast for the future 5 days is:','\n',y_pred_fut)
-
     forecast_close = {'dates':forecasting_dates ,'close': y_pred_fut}
     forecasting_df = pd.DataFrame(data = forecast_close)
     forecasting_df.to_csv(path_forecast +'/'+ 'forecast.csv')
-    print('The forecast for the future 5 days is:','\n',forecasting_df)
+    print('The forecast for the future',number_of_days,'days is:','\n',forecasting_df)
