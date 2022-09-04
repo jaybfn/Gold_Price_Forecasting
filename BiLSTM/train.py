@@ -54,7 +54,7 @@ class DataFormatting():
     def dataset(df):
 
         # converting time colum from object type to datetime format
-        df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%d/%m/%Y')
+        df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%Y/%m/%d')
         # creating a ema feature
         df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
         df = df.dropna()
@@ -153,7 +153,12 @@ def metricplot(df, xlab, ylab_1,ylab_2, path):
     #plt.show()
 
 if __name__ == '__main__':
-    
+
+    # loading the dataset!
+    data = pd.read_csv('../data/gold_mt5.csv',index_col=[0]) 
+    # dropping rows iteratively from bottom for forecasting
+    #data.drop(index=data.index[-j:],axis=0, inplace=True) 
+
     seed(42)
     tf.random.set_seed(42) 
     keras.backend.clear_session()
@@ -184,7 +189,7 @@ if __name__ == '__main__':
     folder = EXPERIMENT_NAME
     path_main = path + '/'+ folder
     create_dir(path_main)
- 
+
     # creating directory to save model and its output
     folder = 'model_Bilstm'+ str(units) + '_' + str(n_hidden_layers)
     path_dir = path_main + '/'+ folder
@@ -228,9 +233,6 @@ if __name__ == '__main__':
     # dump all the hyperparameters in to a dictionary and save to .json file
     hyperparms(dictionary)
 
-    # loading the dataset!
-    data = pd.read_csv('../data/gold_mt5.csv',index_col=[0]) 
-
     # initializing DataFormatting class
     data_init = DataFormatting()
     df_data, df_datetime = DataFormatting.dataset(data)
@@ -253,7 +255,7 @@ if __name__ == '__main__':
     #print('The train dateset:','\n''\n',data_fit_transformed[0:5],'\n''\n', 'The validation dataset:','\n''\n',val_transformed[0:5],'\n''\n','The test dataset:','\n''\n',test_transformed[0:5])
     print('The train dateset:','\n''\n',data_fit_transformed[0:5])
 
-    
+
     # changing shape of the data to match the model requirement!
 
     X_data, y_data = data_transformation(data_fit_transformed, lags = lag)
@@ -276,14 +278,14 @@ if __name__ == '__main__':
     # calling the model
     model = model_init.build_model()
     model.build((train_data_X.shape[0],train_data_X.shape[1], train_data_X.shape[2]))
-    
+
     # metrics for evaluating the model
     metrics = [tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanAbsolutePercentageError()]
 
     # model compiler
     model.compile(optimizer=Adam(learning_rate = learning_rate), loss='mse', metrics = metrics)
     print(model.summary())
-    
+
 
     # setting the callback function
     cb = [
@@ -319,8 +321,8 @@ if __name__ == '__main__':
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
     # get future dates
-    future_days = 10
-    
+    future_days = 1
+
     startdate = list(df_datetime['date'])[-1]
     startdate = pd.to_datetime(startdate) + pd.DateOffset(days=1)
     enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days+1)
