@@ -52,14 +52,16 @@ class DataFormatting():
         self.df_datetime = None
 
     def dataset(df):
-
+    
         # converting time colum from object type to datetime format
-        df['date'] = pd.to_datetime(df['date'])
+        df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%d/%m/%Y')
         # creating a ema feature
         df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
+        df['SMA_50'] = df[['close']].rolling(50).mean().shift(1)
+        df['SMA_200'] = df[['close']].rolling(200).mean().shift(1)
         df = df.dropna()
         # splitting the dataframe in to X and y 
-        df_data = df[['open','close','high','low','SMA_10']] #,
+        df_data = df[['open','close','high','low','SMA_10','SMA_50','SMA_200']] #,
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -158,37 +160,18 @@ if __name__ == '__main__':
     tf.random.set_seed(42) 
     keras.backend.clear_session()
 
-    # model hyperparameters!
-    # lag = 1
-    # n_hidden_layers = 1
-    # batch_size = 16 #256
-    # units = 64
-    # dropout = 0.2
-    # epochs = 100
-    # learning_rate = 0.0001
-    # reg = L1L2(l1=0.03, l2=0)
-
-    # best parameters
-    # lag = 1
-    # n_hidden_layers = 2
-    # batch_size = 128 #256
-    # units = 128
-    # dropout = 0.2
-    # epochs = 100
-    # learning_rate = 0.0001
-    # reg = L1L2(l1=0.0, l2=0.02)
-
-    lag = 2
+    
+    # hyperparameters
+    lag = 1
     n_hidden_layers = 3
     batch_size = 16 #256
-    units = 64
+    units = 128
     dropout = 0.3
     epochs = 200
     learning_rate = 0.0001
-    l1 = 0.03
-    l2 = 0.02
+    l1 = 0.01
+    l2 = 0.01
     reg = L1L2(l1=l1, l2=l2)
-
   
 
     # creating main folder
@@ -296,7 +279,7 @@ if __name__ == '__main__':
     model.build((train_data_X.shape[0],train_data_X.shape[1], train_data_X.shape[2]))
    
     # loading weights:
-    model.load_weights('../Model_Outputs/2022_09_03/exp12/model_Bilstm64_3/model/Bilstm_64.h5')
+    model.load_weights('../Model_Outputs/2022_09_05/exp3/model_Bilstm128_3/model/Bilstm_128.h5')
     
     # metrics for evaluating the model
     metrics = [tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanAbsolutePercentageError()]
