@@ -1,0 +1,11 @@
+{
+    "lags": 1,
+    "n_hidden_layers": 3,
+    "batch_size": 16,
+    "units": 128,
+    "dropout": 0.7,
+    "epochs": 200,
+    "learning_rate": 0.0001,
+    "reg_l1": 0.03,
+    "reg_l2": 0.02
+}
