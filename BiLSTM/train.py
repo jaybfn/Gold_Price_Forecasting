@@ -54,12 +54,14 @@ class DataFormatting():
     def dataset(df):
 
         # converting time colum from object type to datetime format
-        df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%Y/%m/%d')
+        df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%d/%m/%Y')
         # creating a ema feature
-        df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
+        df['SMA_10'] = df[['close']].rolling(3).mean().shift(1)
+        df['SMA_50'] = df[['close']].rolling(50).mean().shift(1)
+        df['SMA_200'] = df[['close']].rolling(200).mean().shift(1)
         df = df.dropna()
         # splitting the dataframe in to X and y 
-        df_data = df[['open','close','high','low','SMA_10']] #,
+        df_data = df[['open','close','high','low','SMA_10','SMA_50','SMA_200']] #,
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -155,7 +157,7 @@ def metricplot(df, xlab, ylab_1,ylab_2, path):
 if __name__ == '__main__':
 
     # loading the dataset!
-    data = pd.read_csv('../data/gold_mt5.csv',index_col=[0]) 
+    data = pd.read_csv('../data/gold_mt5_W1.csv',index_col=[0]) 
     # dropping rows iteratively from bottom for forecasting
     #data.drop(index=data.index[-j:],axis=0, inplace=True) 
 
@@ -165,10 +167,10 @@ if __name__ == '__main__':
 
     # hyperparameters
     lag = 1
-    n_hidden_layers = 3
+    n_hidden_layers = 5
     batch_size = 16 #256
-    units = 64
-    dropout = 0.3
+    units = 64 
+    dropout = 0.5
     epochs = 200
     learning_rate = 0.0001
     l1 = 0.03
@@ -291,7 +293,7 @@ if __name__ == '__main__':
     cb = [
         tf.keras.callbacks.ModelCheckpoint(path_checkpoint),
         tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv'),
-        tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=1001, restore_best_weights=False)]
+        tf.keras.callbacks.EarlyStopping(monitor='val_root_mean_squared_error', patience=10, restore_best_weights=False)]
 
     # model fitting protocol
     history = model.fit(train_data_X,train_data_y, 
@@ -321,10 +323,10 @@ if __name__ == '__main__':
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
     # get future dates
-    future_days = 1
+    future_days = 5
 
     startdate = list(df_datetime['date'])[-1]
-    startdate = pd.to_datetime(startdate) + pd.DateOffset(days=1)
+    startdate = pd.to_datetime(startdate) + pd.DateOffset(days=7)
     enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days+1)
     forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
     # dates =  {'dates':forecasting_dates }

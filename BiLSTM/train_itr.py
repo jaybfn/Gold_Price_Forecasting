@@ -154,6 +154,21 @@ def metricplot(df, xlab, ylab_1,ylab_2, path):
 
 if __name__ == '__main__':
 
+    # creating main folder
+    today = datetime.now()
+    today  = today.strftime('%Y_%m_%d')
+    path = '../Model_Outputs/'+ today
+    create_dir(path)
+
+    # creating directory to save model and its output
+    EXPERIMENT_NAME = input('Enter new Experiment name:')
+    print('\n')
+    print('A folder with',EXPERIMENT_NAME,'name has be created to store all the model details!')
+    print('\n')
+    folder = EXPERIMENT_NAME
+    path_main = path + '/'+ folder
+    create_dir(path_main)
+
     for i in range(10):
         j = i+1
 
@@ -178,20 +193,6 @@ if __name__ == '__main__':
         l2 = 0.02
         reg = L1L2(l1=l1, l2=l2)
 
-        # creating main folder
-        today = datetime.now()
-        today  = today.strftime('%Y_%m_%d')
-        path = '../Model_Outputs/'+ today
-        create_dir(path)
-
-        # creating directory to save model and its output
-        EXPERIMENT_NAME = input('Enter new Experiment name:')
-        print('\n')
-        print('A folder with',EXPERIMENT_NAME,'name has be created to store all the model details!')
-        print('\n')
-        folder = EXPERIMENT_NAME
-        path_main = path + '/'+ folder
-        create_dir(path_main)
 
         # creating directory to save model and its output
         folder = 'model_Bilstm'+ str(units) + '_' + str(n_hidden_layers)  + '_' + str(j)
@@ -330,9 +331,7 @@ if __name__ == '__main__':
         startdate = pd.to_datetime(startdate) + pd.DateOffset(days=1)
         enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days+1)
         forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
-        # dates =  {'dates':forecasting_dates }
-        # forecasting_df = pd.DataFrame(data = dates)
-        # print(forecasting_df)
+      
         number_of_days = len(forecasting_dates)
         forecast = model_eval.predict(train_data_X[-len(forecasting_dates):])
         #print(forecast)
@@ -344,3 +343,5 @@ if __name__ == '__main__':
         forecasting_df = pd.DataFrame(data = forecast_close)
         forecasting_df.to_csv(path_forecast +'/'+ 'forecast.csv')
         print('The forecast for the future',number_of_days,'days is:','\n',forecasting_df)
+        print('\n')
+        print('\n')

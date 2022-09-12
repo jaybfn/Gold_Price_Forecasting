@@ -279,7 +279,7 @@ if __name__ == '__main__':
     train_data_y = y_data
 
 
-    model_hyp = KerasRegressor(build_fn= model, verbose = 1)
+    
 
     # hyperparameter for tuning the model:
 
@@ -293,7 +293,7 @@ if __name__ == '__main__':
                   epochs=epochs)
 
     # initializing model
-    model_init = Bi_LSTM_model(n_hidden_layers, train_data_X, train_data_y, epochs, reg, dropout = 0.0, units = 128,  )
+    model_init = Bi_LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
 
     # calling the model
     model = model_init.build_model()
@@ -305,22 +305,23 @@ if __name__ == '__main__':
     # model compiler
     model.compile(optimizer=Adam(learning_rate = learning_rate), loss='mse', metrics = metrics)
     print(model.summary())
+    
+    model_hyp = KerasRegressor(build_fn= model, verbose = 1)
 
+    # # setting the callback function
+    # cb = [
+    #     tf.keras.callbacks.ModelCheckpoint(path_checkpoint),
+    #     tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv'),
+    #     tf.keras.callbacks.EarlyStopping(monitor='val_MAPE', patience=10, restore_best_weights=False)]
 
-    # setting the callback function
-    cb = [
-        tf.keras.callbacks.ModelCheckpoint(path_checkpoint),
-        tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv'),
-        tf.keras.callbacks.EarlyStopping(monitor='val_MAPE', patience=10, restore_best_weights=False)]
-
-    # model fitting protocol
-    history = model.fit(train_data_X,train_data_y, 
-                        epochs = epochs, 
-                        batch_size = batch_size,  
-                        validation_split=0.1,
-                        verbose = 1,
-                        callbacks=[cb],
-                        shuffle= False)
+    # # model fitting protocol
+    # history = model.fit(train_data_X,train_data_y, 
+    #                     epochs = epochs, 
+    #                     batch_size = batch_size,  
+    #                     validation_split=0.1,
+    #                     verbose = 1,
+    #                     callbacks=[cb],
+    #                     shuffle= False)
 
     # hyperparameter_tuning
 
