@@ -56,7 +56,7 @@ class DataFormatting():
         # converting time colum from object type to datetime format
         df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%d/%m/%Y')
         # creating a ema feature
-        df['SMA_10'] = df[['close']].rolling(3).mean().shift(1)
+        df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
         df['SMA_50'] = df[['close']].rolling(50).mean().shift(1)
         df['SMA_200'] = df[['close']].rolling(200).mean().shift(1)
         df = df.dropna()
@@ -322,23 +322,17 @@ if __name__ == '__main__':
 
     model_eval = load_model(path_model+'/'+model_name, compile=False)
 
-    # get future dates
+    # get future dates and predict the future close price!
     future_days = 5
 
     startdate = list(df_datetime['date'])[-1]
     startdate = pd.to_datetime(startdate) + pd.DateOffset(days=7)
     enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days+1)
     forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
-    # dates =  {'dates':forecasting_dates }
-    # forecasting_df = pd.DataFrame(data = dates)
-    # print(forecasting_df)
     number_of_days = len(forecasting_dates)
     forecast = model_eval.predict(train_data_X[-len(forecasting_dates):])
-    #print(forecast)
     forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
-    #print(forecast_copies)
     y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
-
     forecast_close = {'dates':forecasting_dates ,'close': y_pred_fut}
     forecasting_df = pd.DataFrame(data = forecast_close)
     forecasting_df.to_csv(path_forecast +'/'+ 'forecast.csv')
