@@ -4,8 +4,8 @@
 
 import pandas as pd
 from datetime import datetime
-import MetaTrader5 as mt5
-
+import MetaTrader5 as mt5 # for windows
+#from mt5linux import MetaTrader5 as mt5# for linux
 pd.set_option('display.max_columns', 500) # number of columns to be displayed
 pd.set_option('display.width', 1500)      # max table width to display
 
