@@ -169,11 +169,11 @@ if __name__ == '__main__':
     path_main = path + '/'+ folder
     create_dir(path_main)
 
-    for i in range(10):
+    for i in range(11):
         j = i+1
 
         # loading the dataset!
-        data = pd.read_csv('../data/gold_mt5.csv',index_col=[0]) 
+        data = pd.read_csv('../data/XAUUSD_mt5.csv',index_col=[0]) 
         # dropping rows iteratively from bottom for forecasting
         data.drop(index=data.index[-j:],axis=0, inplace=True) 
     
@@ -183,11 +183,11 @@ if __name__ == '__main__':
 
         # hyperparameters
         lag = 1
-        n_hidden_layers = 3
+        n_hidden_layers = 5
         batch_size = 16 #256
         units = 64
         dropout = 0.3
-        epochs = 200
+        epochs = 1
         learning_rate = 0.0001
         l1 = 0.03
         l2 = 0.02

@@ -54,14 +54,14 @@ class DataFormatting():
     def dataset(df):
 
         # converting time colum from object type to datetime format
-        df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%d/%m/%Y')
+        df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%Y-%m-%d')
         # creating a ema feature
-        df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
-        df['SMA_50'] = df[['close']].rolling(50).mean().shift(1)
-        df['SMA_200'] = df[['close']].rolling(200).mean().shift(1)
+        #df['SMA_10'] = df[['close']].rolling(10).mean().shift(1)
+        #df['SMA_50'] = df[['close']].rolling(50).mean().shift(1)
+        #df['SMA_200'] = df[['close']].rolling(200).mean().shift(1)
         df = df.dropna()
         # splitting the dataframe in to X and y 
-        df_data = df[['open','close','high','low','SMA_10','SMA_50','SMA_200']] #,
+        df_data = df[['open','high','low','close','CPI','EXCHANGE_RATE','INTEREST_RATE','CRUDE_OIL_CLOSE','US500_CLOSE']] #,open,low,close
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -69,7 +69,7 @@ class DataFormatting():
 
 # Data transformation (changing data shape to model requirement)
 
-def data_transformation(data, lags = 5):
+def data_transformation(data, lags = 5, n_fut = 1):
     
     """ this function transforms dataframe to required input shape for the model.
     It required 2 input arguments:
@@ -81,9 +81,9 @@ def data_transformation(data, lags = 5):
     X_data = []
     y_data = []
     
-    for i in range(lags, len(data)):
+    for i in range(lags, len(data)- n_fut +1):
         X_data.append(data[i-lags: i, 0: data.shape[1]])
-        y_data.append(data[i,0:1]) # extracts close price with specific lag as price to be predicted.
+        y_data.append(data[i+ n_fut-1:i+n_fut,3]) # extracts close price with specific lag as price to be predicted.
 
     # convert the list to numpy array
 
@@ -91,6 +91,45 @@ def data_transformation(data, lags = 5):
     y_data = np.array(y_data)
 
     return X_data, y_data
+
+class LSTM_model():
+    
+
+    def __init__(self,n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg):
+
+        self.n_hidden_layers = n_hidden_layers
+        self.units = units
+        self.dropout = dropout
+        self.train_data_X = train_data_X
+        self.train_data_y = train_data_y
+        self.epochs = epochs
+        self.reg = reg
+
+    def build_model(self):
+        
+        model = Sequential()
+        # first lstm layer
+        model.add(LSTM(self.units, activation='tanh', input_shape=(self.train_data_X.shape[1], self.train_data_X.shape[2]), kernel_regularizer=self.reg, return_sequences=True))
+
+        if self.n_hidden_layers !=1:
+
+            # building hidden layers
+            for i in range(1, self.n_hidden_layers):
+                # for the last layer as the return sequence is False
+                if i == self.n_hidden_layers -1:
+                    model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=False))
+                else:
+                    model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=True))
+
+        else:
+            model.add(LSTM(int(self.units/2),  activation='tanh', return_sequences=False))
+
+        # adding dropout layer
+        model.add(Dropout(self.dropout))
+        # final layer
+        model.add(Dense(self.train_data_y.shape[1]))
+
+        return model
 
 class Bi_LSTM_model():
     
@@ -157,7 +196,7 @@ def metricplot(df, xlab, ylab_1,ylab_2, path):
 if __name__ == '__main__':
 
     # loading the dataset!
-    data = pd.read_csv('../data/gold_mt5_W1.csv',index_col=[0]) 
+    data = pd.read_csv('../data/macro_data/Gold_Macor_Data.csv',index_col=[0]) 
     # dropping rows iteratively from bottom for forecasting
     #data.drop(index=data.index[-j:],axis=0, inplace=True) 
 
@@ -166,12 +205,13 @@ if __name__ == '__main__':
     keras.backend.clear_session()
 
     # hyperparameters
-    lag = 1
-    n_hidden_layers = 5
+    lag = 5
+    n_fut = 1
+    n_hidden_layers = 3
     batch_size = 16 #256
-    units = 64 
+    units = 128 
     dropout = 0.5
-    epochs = 200
+    epochs = 50
     learning_rate = 0.0001
     l1 = 0.03
     l2 = 0.02
@@ -183,6 +223,8 @@ if __name__ == '__main__':
     path = '../Model_Outputs/'+ today
     create_dir(path)
 
+    # Which model to run: 
+   # MODEL_NAME = input('Enter the name LSTM or BILSTM:')
     # creating directory to save model and its output
     EXPERIMENT_NAME = input('Enter new Experiment name:')
     print('\n')
@@ -220,6 +262,7 @@ if __name__ == '__main__':
     # hyperparameters to dictionary
     dictionary = {
     "lags": lag,
+    "n_fut": n_fut,
     "n_hidden_layers": n_hidden_layers,
     "batch_size": batch_size,
     "units": units,
@@ -255,85 +298,98 @@ if __name__ == '__main__':
     print('Displaying top 5 rows of all the scaled dataset:')
     print('\n')
     #print('The train dateset:','\n''\n',data_fit_transformed[0:5],'\n''\n', 'The validation dataset:','\n''\n',val_transformed[0:5],'\n''\n','The test dataset:','\n''\n',test_transformed[0:5])
-    print('The train dateset:','\n''\n',data_fit_transformed[0:5])
+    print('The train dateset:','\n''\n',data_fit_transformed[0:10])
 
 
     # changing shape of the data to match the model requirement!
 
-    X_data, y_data = data_transformation(data_fit_transformed, lags = lag)
+    X_data, y_data = data_transformation(data_fit_transformed, lags = lag, n_fut = n_fut)
     print('\n')
     print('Displaying the shape of the dataset required by the model:')
     print('\n')
     print(f' Input shape X:',X_data.shape, f'Input shape y:',y_data.shape)
     print('\n')
+    #print(X_data)
+    print(y_data[0:10])
+    # # # setting the model file name
+    model_name = 'lstm_'+ str(units)+'.h5'
 
-    # # setting the model file name
-    model_name = 'Bilstm_'+ str(units)+'.h5'
+    # # input data
+    # train_data_X = X_data
+    # train_data_y = y_data
 
-    # input data
-    train_data_X = X_data
-    train_data_y = y_data
+    # #if MODEL_NAME == 'LSTM':
 
-    # initializing model
-    model_init = Bi_LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
+    # # initializing model
+    # model_init = LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
 
-    # calling the model
-    model = model_init.build_model()
-    model.build((train_data_X.shape[0],train_data_X.shape[1], train_data_X.shape[2]))
-
-    # metrics for evaluating the model
-    metrics = [tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanAbsolutePercentageError()]
-
-    # model compiler
-    model.compile(optimizer=Adam(learning_rate = learning_rate), loss='mse', metrics = metrics)
-    print(model.summary())
+    # # calling the model
+    # model = model_init.build_model()
+    # model.build((train_data_X.shape[0],train_data_X.shape[1], train_data_X.shape[2]))
+    # print(model.summary())
 
 
-    # setting the callback function
-    cb = [
-        tf.keras.callbacks.ModelCheckpoint(path_checkpoint),
-        tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv'),
-        tf.keras.callbacks.EarlyStopping(monitor='val_root_mean_squared_error', patience=10, restore_best_weights=False)]
 
-    # model fitting protocol
-    history = model.fit(train_data_X,train_data_y, 
-                        epochs = epochs, 
-                        batch_size = batch_size,  
-                        validation_split=0.1,
-                        verbose = 1,
-                        callbacks=[cb],
-                        shuffle= False)
+    # # # initializing model
+    # # model_init = Bi_LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
 
-    # Model evaluation
+    # # # calling the model
+    # # model = model_init.build_model()
+    # # model.build((train_data_X.shape[0],train_data_X.shape[1], train_data_X.shape[2]))
 
-    # training dataset
-    train_loss, RMSE, MAE, MAPE = model.evaluate(train_data_X,train_data_y)
-    print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
+    # # metrics for evaluating the model
+    # metrics = [tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanAbsolutePercentageError()]
 
-    model.save(path_model+'/'+model_name)   
+    # # model compiler
+    # model.compile(optimizer=Adam(learning_rate = learning_rate), loss='mse', metrics = metrics)
+    # print(model.summary())
 
-    path_metrics+'/'+'data.csv'
-    df = pd.read_csv(path_metrics+'/'+'data.csv')
 
-    metricplot(df, 'epoch', 'loss','val_loss', path_metrics)
-    metricplot(df, 'epoch', 'mean_absolute_error','val_mean_absolute_error', path_metrics)
-    metricplot(df, 'epoch', 'mean_absolute_percentage_error','val_mean_absolute_percentage_error', path_metrics)
-    metricplot(df, 'epoch', 'root_mean_squared_error','val_root_mean_squared_error', path_metrics)
+    # # setting the callback function
+    # cb = [
+    #     tf.keras.callbacks.ModelCheckpoint(path_checkpoint),
+    #     tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv')]
+    #     #tf.keras.callbacks.EarlyStopping(monitor='val_root_mean_squared_error', patience=, restore_best_weights=False)]
 
-    model_eval = load_model(path_model+'/'+model_name, compile=False)
+    # # model fitting protocol
+    # history = model.fit(train_data_X,train_data_y, 
+    #                     epochs = epochs, 
+    #                     batch_size = batch_size,  
+    #                     validation_split=0.1,
+    #                     verbose = 1,
+    #                     callbacks=[cb],
+    #                     shuffle= False)
 
-    # get future dates and predict the future close price!
-    future_days = 5
+    # # Model evaluation
 
-    startdate = list(df_datetime['date'])[-1]
-    startdate = pd.to_datetime(startdate) + pd.DateOffset(days=7)
-    enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days+1)
-    forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
-    number_of_days = len(forecasting_dates)
-    forecast = model_eval.predict(train_data_X[-len(forecasting_dates):])
-    forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
-    y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
-    forecast_close = {'dates':forecasting_dates ,'close': y_pred_fut}
-    forecasting_df = pd.DataFrame(data = forecast_close)
-    forecasting_df.to_csv(path_forecast +'/'+ 'forecast.csv')
-    print('The forecast for the future',number_of_days,'days is:','\n',forecasting_df)
+    # # training dataset
+    # train_loss, RMSE, MAE, MAPE = model.evaluate(train_data_X,train_data_y)
+    # print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
+
+    # model.save(path_model+'/'+model_name)   
+
+    # path_metrics+'/'+'data.csv'
+    # df = pd.read_csv(path_metrics+'/'+'data.csv')
+
+    # metricplot(df, 'epoch', 'loss','val_loss', path_metrics)
+    # metricplot(df, 'epoch', 'mean_absolute_error','val_mean_absolute_error', path_metrics)
+    # metricplot(df, 'epoch', 'mean_absolute_percentage_error','val_mean_absolute_percentage_error', path_metrics)
+    # metricplot(df, 'epoch', 'root_mean_squared_error','val_root_mean_squared_error', path_metrics)
+
+    # model_eval = load_model(path_model+'/'+model_name, compile=False)
+
+    # # get future dates and predict the future close price!
+    # future_days = 10
+
+    # startdate = list(df_datetime['date'])[-1]
+    # startdate = pd.to_datetime(startdate) + pd.DateOffset(days=1)
+    # enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days+1)
+    # forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
+    # number_of_days = len(forecasting_dates)
+    # forecast = model_eval.predict(train_data_X[-len(forecasting_dates):])
+    # forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
+    # y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
+    # forecast_close = {'dates':forecasting_dates ,'close': y_pred_fut}
+    # forecasting_df = pd.DataFrame(data = forecast_close)
+    # forecasting_df.to_csv(path_forecast +'/'+ 'forecast.csv')
+    # print('The forecast for the future',number_of_days,'days is:','\n',forecasting_df)
