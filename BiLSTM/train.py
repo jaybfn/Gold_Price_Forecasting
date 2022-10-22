@@ -22,6 +22,8 @@ from keras.models import load_model
 from sklearn.metrics import mean_squared_error
 
 import mlflow
+from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+from hyperopt.pyll import scope
 plt.rcParams['figure.facecolor'] = 'white'
 warnings.simplefilter('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -217,10 +219,10 @@ if __name__ == '__main__':
         lag = 1
         n_fut = 1
         n_hidden_layers = 3
-        batch_size = 16 #256
+        batch_size = 32 #256
         units = 128 
         dropout = 0.5
-        epochs = 2
+        epochs = 500
         learning_rate = 0.00001
         l1 = 0.03
         l2 = 0.02
@@ -288,6 +290,12 @@ if __name__ == '__main__':
         print(dictionary)
         # dump all the hyperparameters in to a dictionary and save to .json file
         hyperparms(dictionary)
+
+        # space = {'learning_rate'       : hp.uniform('learning_rate',0.00001,0.0001),
+        #         'units'      : scope.int(hp.quniform('units',32,256,8)),
+        #         'batch_size' :     
+        #                     scope.int(hp.quniform('batch_size',8,64,4))
+        #         }
 
         # initializing DataFormatting class
         data_init = DataFormatting()
@@ -362,6 +370,8 @@ if __name__ == '__main__':
             tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv')]
             #tf.keras.callbacks.EarlyStopping(monitor='val_root_mean_squared_error', patience=, restore_best_weights=False)]
 
+        mlflow.keras.autolog()
+
         # model fitting protocol
         history = model.fit(train_data_X,train_data_y, 
                             epochs = epochs, 
@@ -383,9 +393,9 @@ if __name__ == '__main__':
         mlflow.log_metric('MAE', RMSE)
         mlflow.log_metric('MAPE',RMSE)
         
-        model.save(path_model+'/'+model_name)   
+        #model.save(path_model+'/'+model_name)   
 
-        mlflow.log_artifact(local_path='model/model.h5', artifact_path='models_pickle')
+        mlflow.keras.save_model(model, path =path_model+'/')
 
         path_metrics+'/'+'data.csv'
         df = pd.read_csv(path_metrics+'/'+'data.csv')
@@ -395,7 +405,8 @@ if __name__ == '__main__':
         metricplot(df, 'epoch', 'mean_absolute_percentage_error','val_mean_absolute_percentage_error', path_metrics)
         metricplot(df, 'epoch', 'root_mean_squared_error','val_root_mean_squared_error', path_metrics)
 
-        model_eval = load_model(path_model+'/'+model_name, compile=False)
+        
+        # model_eval = load_model(path_model+'/'+model_name, compile=False)
 
         # get future dates and predict the future close price!
         future_days = 10
@@ -405,7 +416,7 @@ if __name__ == '__main__':
         enddate = pd.to_datetime(startdate) + pd.DateOffset(days=future_days+1)
         forecasting_dates= pd.bdate_range(start=startdate, end=enddate, freq = 'B')
         number_of_days = len(forecasting_dates)
-        forecast = model_eval.predict(train_data_X[-len(forecasting_dates):])
+        forecast = model.predict(train_data_X[-len(forecasting_dates):])
         forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
         y_pred_fut = scaler.inverse_transform(forecast_copies)[:,0]
         forecast_close = {'dates':forecasting_dates ,'close': y_pred_fut}
