@@ -23,6 +23,8 @@ import matplotlib.pyplot as plt
 from keras.models import load_model
 from sklearn.metrics import mean_squared_error
 from keras.constraints import maxnorm
+from hyperas.distributions import uniform
+from hyperopt.pyll.base import scope 
 plt.rcParams['figure.facecolor'] = 'white'
 warnings.simplefilter('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -96,7 +98,7 @@ def data_transformation(data, lags = 5):
     return X_data, y_data
 
 
-class Bi_LSTM_model():
+class LSTM_model():
     
 
     def __init__(self,n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg):
@@ -113,27 +115,28 @@ class Bi_LSTM_model():
         
         model = Sequential()
         # first lstm layer
-        model.add(Bidirectional(LSTM(self.units, activation='tanh', input_shape=(self.train_data_X.shape[1], self.train_data_X.shape[2]), kernel_regularizer=self.reg, return_sequences=True)))
-        # building hidden layers
-        
+        model.add(LSTM(self.units, activation='tanh', input_shape=(self.train_data_X.shape[1], self.train_data_X.shape[2]), kernel_regularizer=self.reg, return_sequences=True))
+
         if self.n_hidden_layers !=1:
 
+            # building hidden layers
             for i in range(1, self.n_hidden_layers):
                 # for the last layer as the return sequence is False
                 if i == self.n_hidden_layers -1:
-                    model.add(Bidirectional(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=False)))
+                    model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=False))
                 else:
-                    model.add(Bidirectional(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=True)))
+                    model.add(LSTM(int(self.units/(2**i)),  activation='tanh', return_sequences=True))
 
         else:
-            model.add(Bidirectional(LSTM(int(self.units/2),  activation='tanh', return_sequences=False)))
-        
+            model.add(LSTM(int(self.units/2),  activation='tanh', return_sequences=False))
+
         # adding dropout layer
         model.add(Dropout(self.dropout))
         # final layer
         model.add(Dense(self.train_data_y.shape[1]))
-    
+
         return model
+
 
 def metricplot(df, xlab, ylab_1,ylab_2, path):
     
@@ -165,7 +168,14 @@ if __name__ == '__main__':
     # dropping rows iteratively from bottom for forecasting
     #data.drop(index=data.index[-j:],axis=0, inplace=True) 
 
+    space = {'rate'       : hp.uniform('rate',0.00001,0.5),
+            'units'       : scope.int(hp.quniform('units',32,256,16)),
+            'batch_size'  : scope.int(hp.quniform('batch_size',4,64,4)),
+            'layers'      : scope.int(hp.quniform('layers',1,5,1))
+            }
+
     seed(42)
+
     tf.random.set_seed(42) 
     keras.backend.clear_session()
 
@@ -272,7 +282,7 @@ if __name__ == '__main__':
     print('\n')
 
     # # setting the model file name
-    model_name = 'Bilstm_'+ str(units)+'.h5'
+    model_name = 'lstm_'+ str(units)+'.h5'
 
     # input data
     train_data_X = X_data
@@ -293,7 +303,7 @@ if __name__ == '__main__':
                   epochs=epochs)
 
     # initializing model
-    model_init = Bi_LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
+    model_init = LSTM_model(n_hidden_layers, units, dropout, train_data_X, train_data_y, epochs, reg)
 
     # calling the model
     model = model_init.build_model()

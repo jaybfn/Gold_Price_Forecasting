@@ -291,12 +291,6 @@ if __name__ == '__main__':
         # dump all the hyperparameters in to a dictionary and save to .json file
         hyperparms(dictionary)
 
-        # space = {'learning_rate'       : hp.uniform('learning_rate',0.00001,0.0001),
-        #         'units'      : scope.int(hp.quniform('units',32,256,8)),
-        #         'batch_size' :     
-        #                     scope.int(hp.quniform('batch_size',8,64,4))
-        #         }
-
         # initializing DataFormatting class
         data_init = DataFormatting()
         df_data, df_datetime = DataFormatting.dataset(data)
@@ -318,7 +312,6 @@ if __name__ == '__main__':
         print('\n')
         #print('The train dateset:','\n''\n',data_fit_transformed[0:5],'\n''\n', 'The validation dataset:','\n''\n',val_transformed[0:5],'\n''\n','The test dataset:','\n''\n',test_transformed[0:5])
         print('The train dateset:','\n''\n',data_fit_transformed[0:10])
-
 
         # changing shape of the data to match the model requirement!
 
