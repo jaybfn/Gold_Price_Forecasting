@@ -15,11 +15,13 @@ from tensorflow.keras.layers import LSTM, Bidirectional
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.optimizers import Adam
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.model_selection import TimeSeriesSplit, cross_val_score
 from keras.regularizers import L1L2
 import seaborn as sns
 import matplotlib.pyplot as plt
 from keras.models import load_model
 from sklearn.metrics import mean_squared_error
+from keras.wrappers.scikit_learn import KerasRegressor
 
 import mlflow
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
@@ -134,6 +136,7 @@ def data_transformation(data, lags = 5, n_fut = 1):
 #         model.add(Dense(self.train_data_y.shape[1]))
 
 #         return model
+
 def build_model(space): #train_data_X.shape[1], train_data_X.shape[2]
 
     with mlflow.start_run():
@@ -179,8 +182,10 @@ def build_model(space): #train_data_X.shape[1], train_data_X.shape[2]
                             validation_split=0.1,
                             verbose = 1,
                             callbacks=[cb],
-                            shuffle= False)
-
+                            shuffle= False,
+                            workers = 8,
+                            use_multiprocessing = True)
+        
         # training dataset
         train_loss, RMSE, MAE, MAPE = model.evaluate(train_data_X,train_data_y)
         print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
@@ -390,6 +395,34 @@ if __name__ == '__main__':
     train_data_X = X_data
     train_data_y = y_data
 
+    space = {'rate'       : hp.uniform('rate',0.00001,0.001),
+            'units'      : scope.int(hp.quniform('units',32,256,32)),
+            'batch_size' : scope.int(hp.quniform('batch_size',8,68,8)),
+            'layers'     : scope.int(hp.quniform('layers',1,6,1)),
+            'dropout'     : hp.quniform('dropout',0,0.75,0.25),
+            'l1': hp.uniform('l1', 0.001, 0.1),
+            'l2': hp.uniform('l2', 0.01,0.1)}
+
+    mlflow.keras.autolog()
+
+    # #cross validation
+    # tscv = TimeSeriesSplit()
+    # tscv = TimeSeriesSplit(n_splits=5, test_size=500)
+
+    # for train_index, test_index in tscv.split(train_data_X):
+    #     print("TRAIN:", train_index, "TEST:", test_index)
+    #     X_train, X_test = train_data_X[train_index], train_data_X[test_index]
+    #     y_train, y_test = y_data[train_index], y_data[test_index]
+
+    best_result = fmin(
+        fn = build_model,
+        space = space,
+        algo = tpe.suggest,
+        max_evals = 50,
+        trials = Trials()
+        )
+
+
     #if MODEL_NAME == 'LSTM':
 
     # # initializing model
@@ -423,24 +456,11 @@ if __name__ == '__main__':
     #     tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv')]
     #     #tf.keras.callbacks.EarlyStopping(monitor='val_root_mean_squared_error', patience=, restore_best_weights=False)]
 
-    space = {'rate'       : hp.uniform('rate',0.00001,0.001),
-            'units'      : scope.int(hp.quniform('units',32,256,32)),
-            'batch_size' : scope.int(hp.quniform('batch_size',8,68,8)),
-            'layers'     : scope.int(hp.quniform('layers',1,6,1)),
-            'dropout'     : scope.int(hp.quniform('dropout',0,0.75,0.25)),
-            'l1': hp.uniform('l1', 0.001, 0.1),
-            'l2': hp.uniform('l2', 0.01,0.1)}
+    
 
-    mlflow.keras.autolog()
+    
 
-    best_result = fmin(
-        fn = build_model,
-        space = space,
-        algo = tpe.suggest,
-        max_evals = 50,
-        trials = Trials()
-    )
-
+    
     # # model fitting protocol
     # history = model.fit(train_data_X,train_data_y, 
     #                     epochs = epochs, 
