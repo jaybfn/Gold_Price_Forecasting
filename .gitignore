@@ -1,0 +1,3 @@
+BiLSTM/mlruns/
+*.bin
+*.h5
