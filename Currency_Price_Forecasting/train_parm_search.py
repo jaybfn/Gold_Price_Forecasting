@@ -1,4 +1,4 @@
-# Exp1 : mlflow ui --backend-store-uri sqlite:///lstm_hyperopt.db
+# Exp1 : mlflow ui --backend-store-uri sqlite:///lstm_EU.db
 
 # importing all the necessary libraries!
 
@@ -234,8 +234,8 @@ def metricplot(df, xlab, ylab_1,ylab_2, path):
 
 if __name__ == '__main__':
     #DATEBASE_NAME = input('Enter new database name:')
-    mlflow.set_tracking_uri("sqlite:///lstm_hyperopt_new_feature.db")
-    mlflow.set_experiment("Gold_Price_Forecasting")
+    mlflow.set_tracking_uri("sqlite:///lstm_EU.db")
+    mlflow.set_experiment("Currency_Price_Forecasting")
 
     data = pd.read_csv('../data/macro_data/EURUSD.csv',index_col=[0]) 
 

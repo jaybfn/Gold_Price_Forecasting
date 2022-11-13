@@ -1,0 +1,17 @@
+{
+    "lags": 1,
+    "n_fut": 1,
+    "n_hidden_layers": 3,
+    "batch_size": 128,
+    "units": 256,
+    "dropout": 0,
+    "epochs": 1000,
+    "learning_rate": 1.22556185e-05,
+    "reg_l1": 0.001758323799832654,
+    "reg_l2": 0.04727729600605428,
+    "features": [
+        "close",
+        "CPI",
+        "INTEREST_RATE"
+    ]
+}

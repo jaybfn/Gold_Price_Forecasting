@@ -1,3 +1,5 @@
+# Exp1 : mlflow ui --backend-store-uri sqlite:///lstm_hyperopt.db
+
 # importing all the necessary libraries!
 
 import os
@@ -67,7 +69,7 @@ class DataFormatting():
         #df['SMA_200'] = df[['close']].rolling(200).mean().shift(1)
         df = df.dropna()
         # splitting the dataframe in to X and y 
-        df_data = df[['open','high','low','close','CPI','EXCHANGE_RATE','INTEREST_RATE','CRUDE_OIL_CLOSE','US500_CLOSE']] #,open,low,close
+        df_data = df[['close','CPI','INTEREST_RATE']]# df[['open','high','low','close','CPI','EXCHANGE_RATE','INTEREST_RATE','CRUDE_OIL_CLOSE','US500_CLOSE']] #,open,low,close
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -89,7 +91,7 @@ def data_transformation(data, lags = 5, n_fut = 1):
     
     for i in range(lags, len(data)- n_fut +1):
         X_data.append(data[i-lags: i, 0: data.shape[1]])
-        y_data.append(data[i+ n_fut-1:i+n_fut,3]) # extracts close price with specific lag as price to be predicted.
+        y_data.append(data[i+ n_fut-1:i+n_fut,0]) # extracts close price with specific lag as price to be predicted.
 
     # convert the list to numpy array
 
@@ -176,26 +178,38 @@ def build_model(space): #train_data_X.shape[1], train_data_X.shape[2]
             tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv')]
 
         # model fitting protocol
-        history = model.fit(train_data_X,train_data_y, 
-                            epochs = 500, 
+        history = model.fit(x_train, y_train, 
+                            epochs = 700, 
                             batch_size = space['batch_size'],  
-                            validation_split=0.1,
+                            validation_data=(x_test, y_test),
                             verbose = 1,
                             callbacks=[cb],
                             shuffle= False,
-                            workers = 8,
+                            workers = 16,
                             use_multiprocessing = True)
         
         # training dataset
-        train_loss, RMSE, MAE, MAPE = model.evaluate(train_data_X,train_data_y)
+        train_loss, RMSE, MAE, MAPE = model.evaluate(x_train, y_train)
         print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','RMSE:',round(RMSE,3),'\n', 'MAE:',round(MAE,3),'\n','MAPE:',round(MAPE,3))
+        
+        #val dataset
+        val_loss, val_RMSE, val_MAE, val_MAPE = model.evaluate(x_test, y_test)
+        print('\n','Evaluation of Testing dataset:','\n''\n','val_loss:',round(val_loss,3),'\n','val_RMSE:',round(val_RMSE,3),'\n', 'val_MAE:',round(val_MAE,3),'\n','val_MAPE:',round(val_MAPE,3))
+                
+        
         mlflow.log_metric('train_loss',train_loss)
         mlflow.log_metric('RMSE', RMSE)
         mlflow.log_metric('MAE', MAE)
         mlflow.log_metric('MAPE',MAPE)
 
+        mlflow.log_metric('val_loss',val_loss)
+        mlflow.log_metric('val_RMSE', val_RMSE)
+        mlflow.log_metric('val_MAE', val_MAE)
+        mlflow.log_metric('val_MAPE',val_MAPE)
+
+
     
-        return {'loss': MAPE, 'status': STATUS_OK, 'model': model, 'space':space}
+        return {'loss': MAPE, 'val_loss': val_MAPE, 'status': STATUS_OK, 'model': model, 'space':space}
 
 
 
@@ -264,7 +278,7 @@ def metricplot(df, xlab, ylab_1,ylab_2, path):
 
 if __name__ == '__main__':
     #DATEBASE_NAME = input('Enter new database name:')
-    mlflow.set_tracking_uri("sqlite:///lstm_hyperopt.db")
+    mlflow.set_tracking_uri("sqlite:///lstm_hyperopt_new_feature.db")
     mlflow.set_experiment("Gold_Price_Forecasting")
 
     #with mlflow.start_run():
@@ -395,9 +409,21 @@ if __name__ == '__main__':
     train_data_X = X_data
     train_data_y = y_data
 
+    # traininig 
+    x_train = X_data[:5000,:]
+    y_train = y_data[:5000,:]
+
+    # testing
+
+    x_test = X_data[5000:,:]
+    y_test = y_data[5000:,:]
+
+    print(x_test.shape)
+    print(y_test.shape)
+
     space = {'rate'       : hp.uniform('rate',0.00001,0.001),
             'units'      : scope.int(hp.quniform('units',32,256,32)),
-            'batch_size' : scope.int(hp.quniform('batch_size',8,68,8)),
+            'batch_size' : scope.int(hp.quniform('batch_size',8,128,16)),
             'layers'     : scope.int(hp.quniform('layers',1,6,1)),
             'dropout'     : hp.quniform('dropout',0,0.75,0.25),
             'l1': hp.uniform('l1', 0.001, 0.1),
