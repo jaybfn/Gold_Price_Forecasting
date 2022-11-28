@@ -23,7 +23,7 @@ class DataFormatting():
         df['date'] = pd.to_datetime(df['date'],dayfirst = True, format = '%d/%m/%Y')
         df = df.dropna()
         # splitting the dataframe in to X and y 
-        df_data = df[['open','high','low','close']] #'high','low',,'CRUDE_OIL_CLOSE','US500_CLOSE','open','EXCHANGE_RATE',
+        df_data = df[['open','high','low','close']] 
         df_datetime =df[['date']]
 
         return df_data, df_datetime
@@ -57,24 +57,32 @@ def data_transformation(data, lags = 5, n_fut = 1):
 
 if __name__ == '__main__':
 
-    lag = 5
-    n_fut = 1
+    # parms
+    lag = 5 # number of days in past required ot predit the future                                                                      
+    n_fut = 1 # to predict one day in future
 
+    # paths
     SCALING_PATH = 'EU_scaler_std.bin'
     CSV_PATH = '../data/forecast_EURUSD.csv'
     MODEL_PATH = "../Model_Outputs/2022_11_12/EURUSD/model_Bilstm/model/lstm_192.h5"
+
+    # loading scaling model
     std_scaler = joblib.load(SCALING_PATH)
+
+    # loading the dataset 
     data = pd.read_csv(CSV_PATH,index_col=[0]) 
 
     # initializing DataFormatting class
     data_init = DataFormatting()
     df_data, df_datetime = DataFormatting.dataset(data)
     df_colnames = list(df_data.columns)
-
+    # scaling
     data_fit_transformed = std_scaler.transform(df_data)
+    # transforming data for the model 
     X_data, y_data = data_transformation(data_fit_transformed, lags = lag, n_fut = n_fut)
-
+    # laoding the model
     model_eval = load_model(MODEL_PATH, compile=False)
+    # predit on the data
     forecast = model_eval.predict(X_data)
     forecast_copies = np.repeat(forecast, df_data.shape[1], axis = -1 )
     y_pred_fut = std_scaler.inverse_transform(forecast_copies)[:,0]
